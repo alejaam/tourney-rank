@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_games_slug;
+DROP TABLE IF EXISTS games;
