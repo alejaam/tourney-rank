@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+coverage.out
+coverage.html
+*.test
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts (we build inside Docker)
+bin/
+dist/
+
+# Frontend (if added later, build separately)
+web/
+client/
+frontend/
+node_modules/
+
+# Docker
+docker-compose*.yml
+!docker-compose.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
