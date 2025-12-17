@@ -3,117 +3,112 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/melisource/tourney-rank/internal/config"
+	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
 )
 
-const (
-	// DefaultHTTPPort is the default port for HTTP server.
-	DefaultHTTPPort = "8080"
-
-	// DefaultWSPort is the default port for WebSocket server.
-	DefaultWSPort = "8081"
-
-	// ShutdownTimeout is the graceful shutdown timeout.
-	ShutdownTimeout = 15 * time.Second
-)
+// Version is set at build time via -ldflags.
+var Version = "dev"
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("Application error: %v", err)
+		slog.Error("application error", "error", err)
+		os.Exit(1)
 	}
 }
 
 func run() error {
-	ctx := context.Background()
+	// Setup structured logger
+	logLevel := slog.LevelInfo
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
 
-	// TODO: Load configuration
-	// cfg, err := config.Load()
-	// if err != nil {
-	//     return fmt.Errorf("load config: %w", err)
-	// }
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+	slog.SetDefault(logger)
 
-	// TODO: Initialize database connection
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	logger.Info("TourneyRank starting",
+		"version", Version,
+		"environment", cfg.Environment,
+		"http_port", cfg.HTTPPort,
+	)
+
+	// Create context that listens for shutdown signals
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Setup signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// TODO: Initialize database connection when needed
 	// db, err := postgres.Connect(ctx, cfg.DatabaseURL)
 	// if err != nil {
 	//     return fmt.Errorf("connect to database: %w", err)
 	// }
 	// defer db.Close()
 
-	// TODO: Initialize Redis cache
+	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
 	// if err != nil {
 	//     return fmt.Errorf("connect to redis: %w", err)
 	// }
 	// defer cache.Close()
 
-	// TODO: Initialize repositories
-	// gameRepo := postgres.NewGameRepository(db)
-	// playerRepo := postgres.NewPlayerRepository(db)
-	// tournamentRepo := postgres.NewTournamentRepository(db)
+	// Setup HTTP router with options
+	routerOpts := []httpserver.RouterOption{
+		httpserver.WithVersion(Version),
+	}
 
-	// TODO: Initialize domain services
-	// rankingService := ranking.NewService(
-	//     ranking.NewWarzoneCalculator(),
-	//     ranking.NewDefaultCalculator(),
-	// )
-
-	// TODO: Initialize application services
-	// tournamentService := app.NewTournamentService(tournamentRepo, gameRepo)
-	// statsService := app.NewStatsService(playerRepo, rankingService, cache)
-
-	// TODO: Initialize HTTP server
-	// httpServer := http.NewServer(cfg.HTTPPort, tournamentService, statsService)
-
-	// TODO: Initialize WebSocket server
-	// wsServer := websocket.NewServer(cfg.WSPort)
-
-	log.Println("TourneyRank starting...")
-	log.Printf("HTTP Server would start on port %s", getEnv("HTTP_PORT", DefaultHTTPPort))
-	log.Printf("WebSocket Server would start on port %s", getEnv("WS_PORT", DefaultWSPort))
-
-	// Wait for interrupt signal for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	<-sigChan
-	log.Println("Shutdown signal received, gracefully stopping...")
-
-	shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout)
-	defer cancel()
-
-	// TODO: Shutdown servers gracefully
-	// if err := httpServer.Shutdown(shutdownCtx); err != nil {
-	//     return fmt.Errorf("http server shutdown: %w", err)
+	// Add health checkers if dependencies are configured
+	// if db != nil {
+	//     routerOpts = append(routerOpts, httpserver.WithDBChecker(db.Ping))
+	// }
+	// if cache != nil {
+	//     routerOpts = append(routerOpts, httpserver.WithRedisChecker(cache.Ping))
 	// }
 
-	// if err := wsServer.Shutdown(shutdownCtx); err != nil {
-	//     return fmt.Errorf("websocket server shutdown: %w", err)
-	// }
+	router := httpserver.NewRouter(logger, routerOpts...)
 
-	_ = shutdownCtx
+	// Create and start HTTP server
+	server := httpserver.NewServer(cfg.HTTPAddr(), router, logger)
 
-	log.Println("Application stopped gracefully")
+	// Start server in goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- server.Start()
+	}()
+
+	// Wait for shutdown signal or server error
+	select {
+	case err := <-serverErr:
+		return err
+	case sig := <-sigChan:
+		logger.Info("shutdown signal received", "signal", sig.String())
+	}
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, cfg.ShutdownTimeout)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server shutdown error", "error", err)
+		return err
+	}
+
+	logger.Info("application stopped gracefully")
 	return nil
-}
-
-// getEnv retrieves an environment variable with a fallback default value.
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// mustGetEnv retrieves an environment variable or panics if not set.
-func mustGetEnv(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		panic(fmt.Sprintf("environment variable %s is required", key))
-	}
-	return value
 }
