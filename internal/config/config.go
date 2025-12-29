@@ -16,7 +16,8 @@ type Config struct {
 	WSPort   string
 
 	// Database configuration
-	DatabaseURL string
+	MongoDBURI      string
+	MongoDBDatabase string
 
 	// Redis configuration
 	RedisURL string
@@ -38,9 +39,10 @@ func Load() (*Config, error) {
 		HTTPPort: getEnv("HTTP_PORT", "8080"),
 		WSPort:   getEnv("WS_PORT", "8081"),
 
-		// Database defaults (empty means not configured)
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RedisURL:    getEnv("REDIS_URL", ""),
+		// Database defaults
+		MongoDBURI:      getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+		MongoDBDatabase: getEnv("MONGODB_DATABASE", "tourneyrank"),
+		RedisURL:        getEnv("REDIS_URL", ""),
 
 		// Application defaults
 		Environment:     getEnv("ENVIRONMENT", "development"),
