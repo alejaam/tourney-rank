@@ -4,30 +4,30 @@
 
 ✅ **Completed**:
 - [x] Project structure setup
-- [x] Database schema design (PostgreSQL migrations)
 - [x] Domain entities: Game, Player, PlayerStats
 - [x] Ranking system architecture (Strategy Pattern)
 - [x] Warzone ranking calculator implementation
-- [x] Docker Compose setup (PostgreSQL, Redis)
+- [x] Docker Compose setup (MongoDB, Redis)
 - [x] Makefile with development commands
 - [x] Architecture documentation
+- [x] Configuration management (env loading, validation)
+- [x] MongoDB connection manager with retry logic
 
 ## Phase 1: Core Multi-Game Foundation (Weeks 1-2)
 
 ### Week 1: Infrastructure & Authentication
 
-- [ ] **Configuration Management**
-  - [ ] Create `internal/config/config.go` with env loading
-  - [ ] Validate required environment variables
-  - [ ] Support multiple environments (dev, staging, prod)
+- [x] **Configuration Management**
+  - [x] Create `internal/config/config.go` with env loading
+  - [x] Validate required environment variables
+  - [x] Support multiple environments (dev, staging, prod)
 
-- [ ] **Database Layer**
-  - [ ] Create `internal/infra/postgres/connection.go`
+- [ ] **Database Layer (MongoDB)**
+  - [x] Create `internal/infra/mongodb/client.go`
   - [ ] Implement Game Repository
   - [ ] Implement User Repository
   - [ ] Implement Player Repository
-  - [ ] Add database connection pooling
-  - [ ] Add health check endpoint for DB
+  - [x] Add health check endpoint for DB
 
 - [ ] **Authentication System**
   - [ ] User registration endpoint

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/melisource/tourney-rank/internal/config"
 	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
+	"github.com/melisource/tourney-rank/internal/infra/mongodb"
 )
 
 // Version is set at build time via -ldflags.
@@ -54,12 +56,15 @@ func run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// TODO: Initialize database connection when needed
-	// db, err := postgres.Connect(ctx, cfg.DatabaseURL)
-	// if err != nil {
-	//     return fmt.Errorf("connect to database: %w", err)
-	// }
-	// defer db.Close()
+	// Initialize MongoDB connection
+	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
+		URI:          cfg.MongoDBURI,
+		DatabaseName: cfg.MongoDBDatabase,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect to mongodb: %w", err)
+	}
+	defer mongoClient.Close(ctx)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -71,12 +76,10 @@ func run() error {
 	// Setup HTTP router with options
 	routerOpts := []httpserver.RouterOption{
 		httpserver.WithVersion(Version),
+		httpserver.WithMongoDBChecker(mongoClient.Ping),
 	}
 
 	// Add health checkers if dependencies are configured
-	// if db != nil {
-	//     routerOpts = append(routerOpts, httpserver.WithDBChecker(db.Ping))
-	// }
 	// if cache != nil {
 	//     routerOpts = append(routerOpts, httpserver.WithRedisChecker(cache.Ping))
 	// }

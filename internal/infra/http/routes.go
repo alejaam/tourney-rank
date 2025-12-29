@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -42,7 +43,7 @@ type Router struct {
 	version   string
 
 	// Dependencies for readiness checks (optional)
-	dbChecker    func() error
+	mongoChecker func() error
 	redisChecker func() error
 }
 
@@ -56,10 +57,14 @@ func WithVersion(version string) RouterOption {
 	}
 }
 
-// WithDBChecker sets the database health checker.
-func WithDBChecker(checker func() error) RouterOption {
+// WithMongoDBChecker sets the MongoDB health checker.
+func WithMongoDBChecker(checker func(ctx context.Context) error) RouterOption {
 	return func(r *Router) {
-		r.dbChecker = checker
+		r.mongoChecker = func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return checker(ctx)
+		}
 	}
 }
 
@@ -182,19 +187,19 @@ func (r *Router) handleReady(w http.ResponseWriter, req *http.Request) {
 	}
 	allHealthy := true
 
-	// Check database if checker is configured
-	if r.dbChecker != nil {
-		if err := r.dbChecker(); err != nil {
+	// Check MongoDB if checker is configured
+	if r.mongoChecker != nil {
+		if err := r.mongoChecker(); err != nil {
 			status.Database = "unhealthy: " + err.Error()
-			status.Checks["database"] = "fail"
+			status.Checks["mongodb"] = "fail"
 			allHealthy = false
 		} else {
 			status.Database = "healthy"
-			status.Checks["database"] = "pass"
+			status.Checks["mongodb"] = "pass"
 		}
 	} else {
 		status.Database = "not configured"
-		status.Checks["database"] = "skip"
+		status.Checks["mongodb"] = "skip"
 	}
 
 	// Check Redis if checker is configured
