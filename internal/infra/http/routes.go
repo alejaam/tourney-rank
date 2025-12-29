@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
 )
 
 // HealthStatus represents the health check response.
@@ -45,6 +47,10 @@ type Router struct {
 	// Dependencies for readiness checks (optional)
 	mongoChecker func() error
 	redisChecker func() error
+
+	// API handlers
+	gameHandler        *handlers.GameHandler
+	leaderboardHandler *handlers.LeaderboardHandler
 }
 
 // RouterOption configures the router.
@@ -72,6 +78,20 @@ func WithMongoDBChecker(checker func(ctx context.Context) error) RouterOption {
 func WithRedisChecker(checker func() error) RouterOption {
 	return func(r *Router) {
 		r.redisChecker = checker
+	}
+}
+
+// WithGameHandler sets the game handler.
+func WithGameHandler(h *handlers.GameHandler) RouterOption {
+	return func(r *Router) {
+		r.gameHandler = h
+	}
+}
+
+// WithLeaderboardHandler sets the leaderboard handler.
+func WithLeaderboardHandler(h *handlers.LeaderboardHandler) RouterOption {
+	return func(r *Router) {
+		r.leaderboardHandler = h
 	}
 }
 
@@ -110,6 +130,23 @@ func (r *Router) setupRoutes() {
 	// API routes with middleware
 	r.mux.HandleFunc("GET /api/ping", r.withMiddleware(r.handlePing))
 	r.mux.HandleFunc("GET /api/v1/ping", r.withMiddleware(r.handlePing))
+
+	// Game API routes
+	if r.gameHandler != nil {
+		r.mux.HandleFunc("GET /api/v1/games", r.withMiddleware(r.gameHandler.List))
+		r.mux.HandleFunc("POST /api/v1/games", r.withMiddleware(r.gameHandler.Create))
+		r.mux.HandleFunc("GET /api/v1/games/{id}", r.withMiddleware(r.gameHandler.GetByID))
+		r.mux.HandleFunc("PATCH /api/v1/games/{id}/status", r.withMiddleware(r.gameHandler.UpdateStatus))
+		r.mux.HandleFunc("DELETE /api/v1/games/{id}", r.withMiddleware(r.gameHandler.Delete))
+	}
+
+	// Leaderboard API routes
+	if r.leaderboardHandler != nil {
+		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}", r.withMiddleware(r.leaderboardHandler.GetLeaderboard))
+		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tier/{tier}", r.withMiddleware(r.leaderboardHandler.GetLeaderboardByTier))
+		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/player/{playerId}", r.withMiddleware(r.leaderboardHandler.GetPlayerRank))
+		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tiers", r.withMiddleware(r.leaderboardHandler.GetTierDistribution))
+	}
 
 	// Root handler
 	r.mux.HandleFunc("GET /", r.handleRoot)

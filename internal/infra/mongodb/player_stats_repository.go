@@ -357,12 +357,19 @@ func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID
 	return entries, nil
 }
 
+// PlayerRankInfo contains rank information for a player.
+type PlayerRankInfo struct {
+	Rank         int64
+	RankingScore float64
+	Tier         player.Tier
+}
+
 // GetPlayerRank retrieves a player's rank in a game.
-func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gameID uuid.UUID) (int, error) {
-	// Get player's score first
+func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gameID uuid.UUID) (*PlayerRankInfo, error) {
+	// Get player's stats first
 	ps, err := r.GetByPlayerAndGame(ctx, playerID, gameID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	// Count players with higher score
@@ -371,10 +378,23 @@ func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gam
 		"ranking_score": bson.M{"$gt": ps.RankingScore},
 	})
 	if err != nil {
-		return 0, fmt.Errorf("count higher ranked players: %w", err)
+		return nil, fmt.Errorf("count higher ranked players: %w", err)
 	}
 
-	return int(count) + 1, nil
+	return &PlayerRankInfo{
+		Rank:         count + 1,
+		RankingScore: ps.RankingScore,
+		Tier:         ps.Tier,
+	}, nil
+}
+
+// CountByGame returns the total number of players with stats for a game.
+func (r *PlayerStatsRepository) CountByGame(ctx context.Context, gameID uuid.UUID) (int64, error) {
+	count, err := r.collection.CountDocuments(ctx, bson.M{"game_id": gameID.String()})
+	if err != nil {
+		return 0, fmt.Errorf("count players by game: %w", err)
+	}
+	return count, nil
 }
 
 // GetTierDistribution returns the count of players in each tier for a game.
