@@ -51,6 +51,7 @@ type Router struct {
 	// API handlers
 	gameHandler        *handlers.GameHandler
 	leaderboardHandler *handlers.LeaderboardHandler
+	authHandler        *handlers.AuthHandler
 }
 
 // RouterOption configures the router.
@@ -95,6 +96,13 @@ func WithLeaderboardHandler(h *handlers.LeaderboardHandler) RouterOption {
 	}
 }
 
+// WithAuthHandler sets the auth handler.
+func WithAuthHandler(h *handlers.AuthHandler) RouterOption {
+	return func(r *Router) {
+		r.authHandler = h
+	}
+}
+
 // NewRouter creates a new HTTP router with all routes configured.
 func NewRouter(logger *slog.Logger, opts ...RouterOption) *Router {
 	r := &Router{
@@ -130,6 +138,12 @@ func (r *Router) setupRoutes() {
 	// API routes with middleware
 	r.mux.HandleFunc("GET /api/ping", r.withMiddleware(r.handlePing))
 	r.mux.HandleFunc("GET /api/v1/ping", r.withMiddleware(r.handlePing))
+
+	// Auth API routes
+	if r.authHandler != nil {
+		r.mux.HandleFunc("POST /api/v1/auth/register", r.withMiddleware(r.authHandler.Register))
+		r.mux.HandleFunc("POST /api/v1/auth/login", r.withMiddleware(r.authHandler.Login))
+	}
 
 	// Game API routes
 	if r.gameHandler != nil {

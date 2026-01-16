@@ -26,6 +26,7 @@ type Config struct {
 	Environment     string
 	LogLevel        string
 	ShutdownTimeout time.Duration
+	JWTSecret       string
 
 	// Feature flags
 	EnableMetrics bool
@@ -48,6 +49,7 @@ func Load() (*Config, error) {
 		Environment:     getEnv("ENVIRONMENT", "development"),
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
 		ShutdownTimeout: getDurationEnv("SHUTDOWN_TIMEOUT", 15*time.Second),
+		JWTSecret:       getEnv("JWT_SECRET", "super-secret-key-change-me"),
 
 		// Feature flags
 		EnableMetrics: getBoolEnv("ENABLE_METRICS", false),

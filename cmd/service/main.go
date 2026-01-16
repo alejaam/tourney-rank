@@ -8,11 +8,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/melisource/tourney-rank/internal/config"
 	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
 	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
 	"github.com/melisource/tourney-rank/internal/infra/mongodb"
+	"github.com/melisource/tourney-rank/internal/usecase/auth"
 )
 
 // Version is set at build time via -ldflags.
@@ -71,6 +73,7 @@ func run() error {
 	gameRepo := mongodb.NewGameRepository(mongoClient)
 	playerRepo := mongodb.NewPlayerRepository(mongoClient)
 	playerStatsRepo := mongodb.NewPlayerStatsRepository(mongoClient)
+	userRepo := mongodb.NewUserRepository(mongoClient)
 
 	// Ensure database indexes
 	if err := gameRepo.EnsureIndexes(ctx); err != nil {
@@ -79,13 +82,20 @@ func run() error {
 	if err := playerRepo.EnsureIndexes(ctx); err != nil {
 		logger.Warn("failed to ensure player indexes", "error", err)
 	}
+	if err := userRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure user indexes", "error", err)
+	}
 	if err := playerStatsRepo.EnsureIndexes(ctx); err != nil {
 		logger.Warn("failed to ensure player stats indexes", "error", err)
 	}
 
+	// Initialize services
+	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
+
 	// Initialize HTTP handlers
 	gameHandler := handlers.NewGameHandler(gameRepo, logger)
 	leaderboardHandler := handlers.NewLeaderboardHandler(playerStatsRepo, gameRepo, logger)
+	authHandler := handlers.NewAuthHandler(authService, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -96,6 +106,7 @@ func run() error {
 
 	// Setup HTTP router with options
 	routerOpts := []httpserver.RouterOption{
+		httpserver.WithAuthHandler(authHandler),
 		httpserver.WithVersion(Version),
 		httpserver.WithMongoDBChecker(mongoClient.Ping),
 		httpserver.WithGameHandler(gameHandler),
