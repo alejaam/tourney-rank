@@ -22,17 +22,17 @@
   - [x] Validate required environment variables
   - [x] Support multiple environments (dev, staging, prod)
 
-- [ ] **Database Layer (MongoDB)**
+- [x] **Database Layer (MongoDB)**
   - [x] Create `internal/infra/mongodb/client.go`
-  - [ ] Implement Game Repository
-  - [ ] Implement User Repository
-  - [ ] Implement Player Repository
+  - [x] Implement Game Repository
+  - [x] Implement User Repository
+  - [x] Implement Player Repository
   - [x] Add health check endpoint for DB
 
-- [ ] **Authentication System**
-  - [ ] User registration endpoint
-  - [ ] Login with JWT token generation
-  - [ ] Password hashing with bcrypt
+- [x] **Authentication System**
+  - [x] User registration endpoint
+  - [x] Login with JWT token generation
+  - [x] Password hashing with bcrypt
   - [ ] Role-based access control (RBAC) middleware
   - [ ] Refresh token mechanism
 
