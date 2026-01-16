@@ -46,3 +46,9 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# IA files
+AGENTS.md
+copilot-instructions.md
+.github/agents/
+.github/instructions/
