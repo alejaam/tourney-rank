@@ -68,10 +68,10 @@ func (r *PlayerRepository) Create(ctx context.Context, p *player.Player) error {
 }
 
 // GetByID retrieves a player by their ID.
-func (r *PlayerRepository) GetByID(ctx context.Context, id uuid.UUID) (*player.Player, error) {
+func (r *PlayerRepository) GetByID(ctx context.Context, id string) (*player.Player, error) {
 	var doc playerDocument
 
-	err := r.collection.FindOne(ctx, bson.M{"_id": id.String()}).Decode(&doc)
+	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrPlayerNotFound
@@ -83,10 +83,10 @@ func (r *PlayerRepository) GetByID(ctx context.Context, id uuid.UUID) (*player.P
 }
 
 // GetByUserID retrieves a player by their user ID.
-func (r *PlayerRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*player.Player, error) {
+func (r *PlayerRepository) GetByUserID(ctx context.Context, userID string) (*player.Player, error) {
 	var doc playerDocument
 
-	err := r.collection.FindOne(ctx, bson.M{"user_id": userID.String()}).Decode(&doc)
+	err := r.collection.FindOne(ctx, bson.M{"user_id": userID}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrPlayerNotFound
@@ -126,6 +126,38 @@ func (r *PlayerRepository) List(ctx context.Context, limit, offset int64) ([]*pl
 	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, fmt.Errorf("find players: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var players []*player.Player
+	for cursor.Next(ctx) {
+		var doc playerDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, fmt.Errorf("decode player: %w", err)
+		}
+
+		p, err := toPlayerEntity(&doc)
+		if err != nil {
+			return nil, fmt.Errorf("convert player entity: %w", err)
+		}
+		players = append(players, p)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	return players, nil
+}
+
+// GetAll retrieves all players without pagination.
+// Ref: [GO-ERR-01] - Error wrapping with context
+func (r *PlayerRepository) GetAll(ctx context.Context) ([]*player.Player, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "display_name", Value: 1}})
+
+	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("find all players: %w", err)
 	}
 	defer cursor.Close(ctx)
 
@@ -207,8 +239,8 @@ func (r *PlayerRepository) Update(ctx context.Context, p *player.Player) error {
 }
 
 // Delete removes a player from the database.
-func (r *PlayerRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id.String()})
+func (r *PlayerRepository) Delete(ctx context.Context, id string) error {
+	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return fmt.Errorf("delete player: %w", err)
 	}

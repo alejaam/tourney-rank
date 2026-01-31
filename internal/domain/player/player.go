@@ -73,8 +73,8 @@ func NewPlayer(userID uuid.UUID, displayName string) (*Player, error) {
 		UserID:      userID,
 		DisplayName: displayName,
 		PlatformIDs: make(map[string]string),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}, nil
 }
 

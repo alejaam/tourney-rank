@@ -113,7 +113,7 @@ func (h *GameHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, err := h.repo.GetByID(ctx, id)
+	g, err := h.repo.GetByID(ctx, id.String())
 	if err != nil {
 		if errors.Is(err, mongodb.ErrGameNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "game not found")
@@ -242,7 +242,7 @@ func (h *GameHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.Delete(ctx, id); err != nil {
+	if err := h.repo.Delete(ctx, id.String()); err != nil {
 		if errors.Is(err, mongodb.ErrGameNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "game not found")
 			return

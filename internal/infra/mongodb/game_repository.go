@@ -70,10 +70,10 @@ func (r *GameRepository) Create(ctx context.Context, g *game.Game) error {
 }
 
 // GetByID retrieves a game by its ID.
-func (r *GameRepository) GetByID(ctx context.Context, id uuid.UUID) (*game.Game, error) {
+func (r *GameRepository) GetByID(ctx context.Context, id string) (*game.Game, error) {
 	var doc gameDocument
 
-	err := r.collection.FindOne(ctx, bson.M{"_id": id.String()}).Decode(&doc)
+	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrGameNotFound
@@ -97,6 +97,38 @@ func (r *GameRepository) GetBySlug(ctx context.Context, slug string) (*game.Game
 	}
 
 	return toGameEntity(&doc)
+}
+
+// GetAll retrieves all games without filtering.
+// Ref: [GO-ERR-01] - Error wrapping with context
+func (r *GameRepository) GetAll(ctx context.Context) ([]*game.Game, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "name", Value: 1}})
+
+	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("find games: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var games []*game.Game
+	for cursor.Next(ctx) {
+		var doc gameDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, fmt.Errorf("decode game: %w", err)
+		}
+
+		g, err := toGameEntity(&doc)
+		if err != nil {
+			return nil, fmt.Errorf("convert game entity: %w", err)
+		}
+		games = append(games, g)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	return games, nil
 }
 
 // List retrieves all games with optional filtering.
@@ -156,8 +188,8 @@ func (r *GameRepository) Update(ctx context.Context, g *game.Game) error {
 }
 
 // Delete removes a game from the database.
-func (r *GameRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id.String()})
+func (r *GameRepository) Delete(ctx context.Context, id string) error {
+	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return fmt.Errorf("delete game: %w", err)
 	}

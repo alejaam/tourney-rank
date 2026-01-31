@@ -76,8 +76,8 @@ func NewGame(name, slug, description, platformIDFormat string, schema StatSchema
 		RankingWeights:   weights,
 		PlatformIDFormat: platformIDFormat,
 		IsActive:         true,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		CreatedAt:        time.Now().UTC(),
+		UpdatedAt:        time.Now().UTC(),
 	}, nil
 }
 

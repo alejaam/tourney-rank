@@ -93,7 +93,7 @@ func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Reque
 		gameName = g.Name
 	} else {
 		// Get game by ID for name
-		g, err := h.gameRepo.GetByID(ctx, id)
+		g, err := h.gameRepo.GetByID(ctx, id.String())
 		if err != nil {
 			if errors.Is(err, mongodb.ErrGameNotFound) {
 				h.errorResponse(w, http.StatusNotFound, "game not found")

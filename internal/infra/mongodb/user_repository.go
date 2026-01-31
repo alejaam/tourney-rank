@@ -138,3 +138,60 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*u
 	}
 	return doc.toDomain(), nil
 }
+
+// GetAll retrieves all users.
+// Ref: [GO-ERR-01] - Error wrapping with context
+func (r *UserRepository) GetAll(ctx context.Context) ([]*user.User, error) {
+	cursor, err := r.coll.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("finding all users: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var users []*user.User
+	for cursor.Next(ctx) {
+		var doc userDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, fmt.Errorf("decoding user document: %w", err)
+		}
+		users = append(users, doc.toDomain())
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	return users, nil
+}
+
+// Delete removes a user by ID.
+// Ref: [GO-ERR-01] - Error wrapping with context
+func (r *UserRepository) Delete(ctx context.Context, id string) error {
+	result, err := r.coll.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return fmt.Errorf("deleting user: %w", err)
+	}
+	if result.DeletedCount == 0 {
+		return user.ErrNotFound
+	}
+	return nil
+}
+
+// UpdateRole updates a user's role.
+// Ref: [GO-ERR-01] - Error wrapping with context
+func (r *UserRepository) UpdateRole(ctx context.Context, id string, role user.Role) error {
+	update := bson.M{
+		"$set": bson.M{
+			"role":       string(role),
+			"updated_at": time.Now().UTC(),
+		},
+	}
+	result, err := r.coll.UpdateOne(ctx, bson.M{"_id": id}, update)
+	if err != nil {
+		return fmt.Errorf("updating user role: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return user.ErrNotFound
+	}
+	return nil
+}

@@ -52,4 +52,7 @@ AGENTS.md
 copilot-instructions.md
 .github/agents/
 .github/instructions/
+.github/skills/
+.github/prompts/
+.github/standards/
 .agent/
