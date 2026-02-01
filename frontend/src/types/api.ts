@@ -50,10 +50,13 @@ export interface StatField {
 // Players & Leaderboard
 export interface Player {
   id: string;
-  username: string;
+  user_id: string;
+  display_name: string;
+  avatar_url: string;
+  bio: string;
   platform_ids: Record<string, string>;
-  tier: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface LeaderboardEntry {
@@ -63,6 +66,59 @@ export interface LeaderboardEntry {
   score: number;
   tier: string;
   stats: Record<string, number>;
+}
+
+// Admin API Types
+export interface ListUsersResponse {
+  users: User[];
+  total: number;
+}
+
+export interface ListGamesResponse {
+  games: Game[];
+  total: number;
+}
+
+export interface ListPlayersResponse {
+  players: Player[];
+  total: number;
+}
+
+export interface UpdateRoleRequest {
+  role: 'user' | 'admin';
+}
+
+export interface CreateGameRequest {
+  name: string;
+  slug: string;
+  description: string;
+  platform_id_format: string;
+  stat_schema: Record<string, StatField>;
+  ranking_weights: Record<string, number>;
+}
+
+export interface UpdateGameRequest {
+  name: string;
+  description: string;
+  platform_id_format: string;
+  stat_schema: Record<string, StatField>;
+  ranking_weights: Record<string, number>;
+  is_active: boolean;
+}
+
+export interface CreatePlayerRequest {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string;
+  bio?: string;
+  platform_ids?: Record<string, string>;
+}
+
+export interface UpdatePlayerRequest {
+  display_name: string;
+  avatar_url?: string;
+  bio?: string;
+  platform_ids?: Record<string, string>;
 }
 
 // API Error

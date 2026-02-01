@@ -14,6 +14,7 @@ import (
 	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
 	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
 	"github.com/melisource/tourney-rank/internal/infra/mongodb"
+	"github.com/melisource/tourney-rank/internal/usecase/admin"
 	"github.com/melisource/tourney-rank/internal/usecase/auth"
 )
 
@@ -92,10 +93,16 @@ func run() error {
 	// Initialize services
 	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
 
+	// Initialize admin services
+	adminUserService := admin.NewUserService(userRepo)
+	adminGameService := admin.NewGameService(gameRepo)
+	adminPlayerService := admin.NewPlayerService(playerRepo)
+
 	// Initialize HTTP handlers
 	gameHandler := handlers.NewGameHandler(gameRepo, logger)
 	leaderboardHandler := handlers.NewLeaderboardHandler(playerStatsRepo, gameRepo, logger)
 	authHandler := handlers.NewAuthHandler(authService, logger)
+	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -107,6 +114,8 @@ func run() error {
 	// Setup HTTP router with options
 	routerOpts := []httpserver.RouterOption{
 		httpserver.WithAuthHandler(authHandler),
+		httpserver.WithAdminHandler(adminHandler),
+		httpserver.WithJWTSecret(cfg.JWTSecret),
 		httpserver.WithVersion(Version),
 		httpserver.WithMongoDBChecker(mongoClient.Ping),
 		httpserver.WithGameHandler(gameHandler),

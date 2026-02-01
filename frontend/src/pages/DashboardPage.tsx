@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { useLogout } from '../features/auth/hooks';
 import type { AuthState } from '../store/authStore';
@@ -16,9 +17,16 @@ export const DashboardPage = () => {
                         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
                         <p className="text-gray-400">Welcome back, {user?.username}!</p>
                     </div>
-                    <Button variant="secondary" onClick={logout}>
-                        Logout
-                    </Button>
+                    <div className="flex gap-3">
+                        {user?.role === 'admin' && (
+                            <Link to="/admin">
+                                <Button variant="secondary">Admin Panel</Button>
+                            </Link>
+                        )}
+                        <Button variant="secondary" onClick={logout}>
+                            Logout
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Quick Stats */}

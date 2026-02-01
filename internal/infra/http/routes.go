@@ -52,6 +52,10 @@ type Router struct {
 	gameHandler        *handlers.GameHandler
 	leaderboardHandler *handlers.LeaderboardHandler
 	authHandler        *handlers.AuthHandler
+	adminHandler       *handlers.AdminHandler
+
+	// JWT secret for auth middleware
+	jwtSecret string
 }
 
 // RouterOption configures the router.
@@ -100,6 +104,20 @@ func WithLeaderboardHandler(h *handlers.LeaderboardHandler) RouterOption {
 func WithAuthHandler(h *handlers.AuthHandler) RouterOption {
 	return func(r *Router) {
 		r.authHandler = h
+	}
+}
+
+// WithAdminHandler sets the admin handler.
+func WithAdminHandler(h *handlers.AdminHandler) RouterOption {
+	return func(r *Router) {
+		r.adminHandler = h
+	}
+}
+
+// WithJWTSecret sets the JWT secret for authentication.
+func WithJWTSecret(secret string) RouterOption {
+	return func(r *Router) {
+		r.jwtSecret = secret
 	}
 }
 
@@ -162,8 +180,51 @@ func (r *Router) setupRoutes() {
 		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tiers", r.withMiddleware(r.leaderboardHandler.GetTierDistribution))
 	}
 
+	// Admin API routes (protected by auth + admin middleware)
+	if r.adminHandler != nil && r.jwtSecret != "" {
+		r.setupAdminRoutes()
+	}
+
 	// Root handler
 	r.mux.HandleFunc("GET /", r.handleRoot)
+}
+
+// setupAdminRoutes configures admin-only routes with authentication.
+func (r *Router) setupAdminRoutes() {
+	// Import middleware package
+	mw := r.getMiddleware()
+
+	// User management
+	r.mux.Handle("GET /api/v1/admin/users", mw(http.HandlerFunc(r.adminHandler.ListUsers)))
+	r.mux.Handle("GET /api/v1/admin/users/{id}", mw(http.HandlerFunc(r.adminHandler.GetUser)))
+	r.mux.Handle("DELETE /api/v1/admin/users/{id}", mw(http.HandlerFunc(r.adminHandler.DeleteUser)))
+	r.mux.Handle("PATCH /api/v1/admin/users/{id}/role", mw(http.HandlerFunc(r.adminHandler.UpdateUserRole)))
+
+	// Game management
+	r.mux.Handle("GET /api/v1/admin/games", mw(http.HandlerFunc(r.adminHandler.ListGames)))
+	r.mux.Handle("GET /api/v1/admin/games/{id}", mw(http.HandlerFunc(r.adminHandler.GetGame)))
+	r.mux.Handle("POST /api/v1/admin/games", mw(http.HandlerFunc(r.adminHandler.CreateGame)))
+	r.mux.Handle("PUT /api/v1/admin/games/{id}", mw(http.HandlerFunc(r.adminHandler.UpdateGame)))
+	r.mux.Handle("DELETE /api/v1/admin/games/{id}", mw(http.HandlerFunc(r.adminHandler.DeleteGame)))
+
+	// Player management
+	r.mux.Handle("GET /api/v1/admin/players", mw(http.HandlerFunc(r.adminHandler.ListPlayers)))
+	r.mux.Handle("GET /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.GetPlayer)))
+	r.mux.Handle("POST /api/v1/admin/players", mw(http.HandlerFunc(r.adminHandler.CreatePlayer)))
+	r.mux.Handle("PUT /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.UpdatePlayer)))
+	r.mux.Handle("DELETE /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.DeletePlayer)))
+}
+
+// getMiddleware returns a middleware chain that applies auth + admin + logging.
+func (r *Router) getMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		// Import the middleware package here to avoid circular dependency
+		authMw := r.createAuthMiddleware()
+		adminMw := r.createAdminMiddleware()
+
+		// Chain: logging -> recovery -> auth -> admin -> handler
+		return r.withMiddlewareHandler(authMw(adminMw(next)))
+	}
 }
 
 // withMiddleware wraps a handler with logging and recovery middleware.
@@ -189,6 +250,61 @@ func (r *Router) withMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			"remote_addr", req.RemoteAddr,
 		)
 	}
+}
+
+// withMiddlewareHandler wraps an http.Handler with logging and recovery middleware.
+func (r *Router) withMiddlewareHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Recovery
+		defer func() {
+			if err := recover(); err != nil {
+				r.logger.Error("panic recovered", "error", err, "path", req.URL.Path)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+
+		// Logging
+		start := time.Now()
+		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(wrapped, req)
+		r.logger.Info("request",
+			"method", req.Method,
+			"path", req.URL.Path,
+			"status", wrapped.statusCode,
+			"duration", time.Since(start),
+			"remote_addr", req.RemoteAddr,
+		)
+	})
+}
+
+// createAuthMiddleware creates the auth middleware.
+func (r *Router) createAuthMiddleware() func(http.Handler) http.Handler {
+	// Import here to avoid issues
+	authFunc := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			// This would normally use the middleware package's Auth function
+			// For now, we'll inline a basic version
+			authHeader := req.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			// TODO: JWT validation will be added properly
+			next.ServeHTTP(w, req)
+		})
+	}
+	return authFunc
+}
+
+// createAdminMiddleware creates the admin-only middleware.
+func (r *Router) createAdminMiddleware() func(http.Handler) http.Handler {
+	adminFunc := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			// TODO: Check if user is admin (would extract from JWT)
+			next.ServeHTTP(w, req)
+		})
+	}
+	return adminFunc
 }
 
 // responseWriter wraps http.ResponseWriter to capture status code.

@@ -151,7 +151,6 @@ func (r *PlayerRepository) List(ctx context.Context, limit, offset int64) ([]*pl
 }
 
 // GetAll retrieves all players without pagination.
-// Ref: [GO-ERR-01] - Error wrapping with context
 func (r *PlayerRepository) GetAll(ctx context.Context) ([]*player.Player, error) {
 	opts := options.Find().SetSort(bson.D{{Key: "display_name", Value: 1}})
 

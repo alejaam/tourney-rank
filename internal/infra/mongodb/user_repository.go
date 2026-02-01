@@ -140,7 +140,6 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*u
 }
 
 // GetAll retrieves all users.
-// Ref: [GO-ERR-01] - Error wrapping with context
 func (r *UserRepository) GetAll(ctx context.Context) ([]*user.User, error) {
 	cursor, err := r.coll.Find(ctx, bson.M{})
 	if err != nil {
@@ -165,7 +164,6 @@ func (r *UserRepository) GetAll(ctx context.Context) ([]*user.User, error) {
 }
 
 // Delete removes a user by ID.
-// Ref: [GO-ERR-01] - Error wrapping with context
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	result, err := r.coll.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
@@ -178,7 +176,6 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 }
 
 // UpdateRole updates a user's role.
-// Ref: [GO-ERR-01] - Error wrapping with context
 func (r *UserRepository) UpdateRole(ctx context.Context, id string, role user.Role) error {
 	update := bson.M{
 		"$set": bson.M{

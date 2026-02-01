@@ -100,7 +100,6 @@ func (r *GameRepository) GetBySlug(ctx context.Context, slug string) (*game.Game
 }
 
 // GetAll retrieves all games without filtering.
-// Ref: [GO-ERR-01] - Error wrapping with context
 func (r *GameRepository) GetAll(ctx context.Context) ([]*game.Game, error) {
 	opts := options.Find().SetSort(bson.D{{Key: "name", Value: 1}})
 
