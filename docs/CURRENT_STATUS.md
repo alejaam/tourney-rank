@@ -9,12 +9,12 @@ This document serves as the source of truth for what currently exists vs. what i
 
 | Feature Area | README Description | Current Code Status | Notes |
 | :--- | :--- | :--- | :--- |
-| **Project Structure** | `internal/app`, `internal/domain/team`, `internal/domain/tournament`, `api/openapi` | ⚠️ **Partial** | `internal/domain/game`, `player`, `ranking`, and `internal/infra/mongodb` exist. |
+| **Project Structure** | legacy docs mentioned an older structure and extra domain packages | ⚠️ **Partial** | Current structure is `internal/{domain,usecase,infra,config}` + `frontend/`. |
 | **API Endpoints** | REST API for Games, Leaderboards | ✅ **Implemented** | HTTP handlers for Games and Leaderboard CRUD. |
 | **Game Domain** | Flexible Schema, Ranking Weights | ✅ **Implemented** | `internal/domain/game` has robust logic. |
 | **Ranking Logic** | Strategy Pattern for generic/specific ranking | ✅ **Implemented** | `internal/domain/ranking` implements the Strategy pattern. |
 | **Database** | MongoDB + Redis | ✅ **MongoDB Done** | MongoDB repositories implemented. Redis caching pending. |
-| **Frontend** | React + Vite Dashboard | ❌ **Missing** | Folder structure exists but is largely empty/boilerplate. |
+| **Frontend** | React + Vite Dashboard | ⚠️ **Partial** | Auth flows/pages + API services exist; feature coverage still limited. |
 
 ## ✅ Working Components
 

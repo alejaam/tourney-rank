@@ -33,7 +33,7 @@ Thank you for considering contributing to TourneyRank! This document provides gu
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/tourney-rank.git
+git clone https://github.com/alejaam/tourney-rank.git
 cd tourney-rank
 
 # Setup infrastructure and dependencies
@@ -156,7 +156,7 @@ Then create a Pull Request on GitHub.
    - Rich entities with behavior
    - Define repository interfaces here
 
-2. **Application Layer** (`internal/app/`)
+2. **Usecase Layer** (`internal/usecase/`)
    - Orchestrates domain entities
    - Implements use cases
    - Depends only on domain layer
@@ -171,7 +171,7 @@ Then create a Pull Request on GitHub.
 ### Dependency Direction
 
 ```
-infra → app → domain
+infra → usecase → domain
   ↓      ↓       ↓
   ✗      ✗      (no deps)
 ```
@@ -396,7 +396,7 @@ rankingService := ranking.NewService(
 
 ### Adding a New Use Case
 
-1. Create in `internal/app/use_case_name/`
+1. Create in `internal/usecase/use_case_name/`
 2. Define service struct with dependencies
 3. Implement business logic
 4. Add integration tests
