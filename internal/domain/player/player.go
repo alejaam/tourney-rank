@@ -9,6 +9,12 @@ import (
 )
 
 var (
+	// ErrNotFound is returned when a player is not found.
+	ErrNotFound = errors.New("player not found")
+
+	// ErrStatsNotFound is returned when player stats are not found.
+	ErrStatsNotFound = errors.New("player stats not found")
+
 	// ErrInvalidUsername is returned when username is empty or invalid.
 	ErrInvalidUsername = errors.New("username cannot be empty")
 

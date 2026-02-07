@@ -1,4 +1,3 @@
-// Package handlers provides HTTP handlers for the API endpoints.
 package handlers
 
 import (
@@ -9,56 +8,22 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-
 	"github.com/melisource/tourney-rank/internal/domain/player"
-	"github.com/melisource/tourney-rank/internal/infra/mongodb"
+	"github.com/melisource/tourney-rank/internal/usecase/leaderboard"
 )
 
 // LeaderboardHandler handles HTTP requests for leaderboard resources.
 type LeaderboardHandler struct {
-	statsRepo *mongodb.PlayerStatsRepository
-	gameRepo  *mongodb.GameRepository
-	logger    *slog.Logger
+	service *leaderboard.Service
+	logger  *slog.Logger
 }
 
 // NewLeaderboardHandler creates a new LeaderboardHandler.
-func NewLeaderboardHandler(
-	statsRepo *mongodb.PlayerStatsRepository,
-	gameRepo *mongodb.GameRepository,
-	logger *slog.Logger,
-) *LeaderboardHandler {
+func NewLeaderboardHandler(service *leaderboard.Service, logger *slog.Logger) *LeaderboardHandler {
 	return &LeaderboardHandler{
-		statsRepo: statsRepo,
-		gameRepo:  gameRepo,
-		logger:    logger,
+		service: service,
+		logger:  logger,
 	}
-}
-
-// LeaderboardResponse represents the leaderboard API response.
-type LeaderboardResponse struct {
-	GameID   string                     `json:"game_id"`
-	GameName string                     `json:"game_name"`
-	Entries  []mongodb.LeaderboardEntry `json:"entries"`
-	Total    int64                      `json:"total"`
-	Limit    int64                      `json:"limit"`
-	Offset   int64                      `json:"offset"`
-}
-
-// TierDistributionResponse represents the tier distribution response.
-type TierDistributionResponse struct {
-	GameID       string           `json:"game_id"`
-	Distribution map[string]int64 `json:"distribution"`
-	TotalPlayers int64            `json:"total_players"`
-}
-
-// PlayerRankResponse represents the player rank response.
-type PlayerRankResponse struct {
-	PlayerID     string  `json:"player_id"`
-	GameID       string  `json:"game_id"`
-	Rank         int64   `json:"rank"`
-	RankingScore float64 `json:"ranking_score"`
-	Tier         string  `json:"tier"`
-	Percentile   float64 `json:"percentile"`
 }
 
 // GetLeaderboard handles GET /api/v1/leaderboard/{gameId}
@@ -72,39 +37,11 @@ func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Parse game ID or get by slug
-	var gameID uuid.UUID
-	var gameName string
-
-	id, err := uuid.Parse(gameIDStr)
+	// Try to parse as UUID first, if not try slug lookup via service
+	gameID, err := uuid.Parse(gameIDStr)
 	if err != nil {
-		// Try to find by slug
-		g, err := h.gameRepo.GetBySlug(ctx, gameIDStr)
-		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
-				h.errorResponse(w, http.StatusNotFound, "game not found")
-				return
-			}
-			h.logger.Error("failed to get game by slug", "slug", gameIDStr, "error", err)
-			h.errorResponse(w, http.StatusInternalServerError, "failed to get game")
-			return
-		}
-		gameID = g.ID
-		gameName = g.Name
-	} else {
-		// Get game by ID for name
-		g, err := h.gameRepo.GetByID(ctx, id.String())
-		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
-				h.errorResponse(w, http.StatusNotFound, "game not found")
-				return
-			}
-			h.logger.Error("failed to get game", "id", id, "error", err)
-			h.errorResponse(w, http.StatusInternalServerError, "failed to get game")
-			return
-		}
-		gameID = id
-		gameName = g.Name
+		h.errorResponse(w, http.StatusBadRequest, "invalid game id format")
+		return
 	}
 
 	// Parse pagination params
@@ -123,28 +60,20 @@ func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get leaderboard
-	entries, err := h.statsRepo.GetLeaderboard(ctx, gameID, limit, offset)
+	entries, gameName, total, err := h.service.GetLeaderboard(ctx, gameID, limit, offset)
 	if err != nil {
 		h.logger.Error("failed to get leaderboard", "game_id", gameID, "error", err)
 		h.errorResponse(w, http.StatusInternalServerError, "failed to get leaderboard")
 		return
 	}
 
-	// Get total count
-	total, err := h.statsRepo.CountByGame(ctx, gameID)
-	if err != nil {
-		h.logger.Error("failed to count players", "game_id", gameID, "error", err)
-		// Continue with 0 total
-		total = 0
-	}
-
-	response := LeaderboardResponse{
-		GameID:   gameID.String(),
-		GameName: gameName,
-		Entries:  entries,
-		Total:    total,
-		Limit:    limit,
-		Offset:   offset,
+	response := map[string]interface{}{
+		"game_id":   gameID.String(),
+		"game_name": gameName,
+		"entries":   entries,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
 	}
 
 	h.jsonResponse(w, http.StatusOK, response)
@@ -162,52 +91,32 @@ func (h *LeaderboardHandler) GetLeaderboardByTier(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Validate tier
-	validTiers := map[string]bool{
-		"bronze": true, "silver": true, "gold": true,
-		"platinum": true, "diamond": true, "master": true,
-	}
-	if !validTiers[tierStr] {
-		h.errorResponse(w, http.StatusBadRequest, "invalid tier")
-		return
-	}
-
-	// Get game ID
-	var gameID uuid.UUID
-	id, err := uuid.Parse(gameIDStr)
+	// Parse game ID
+	gameID, err := uuid.Parse(gameIDStr)
 	if err != nil {
-		g, err := h.gameRepo.GetBySlug(ctx, gameIDStr)
-		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
-				h.errorResponse(w, http.StatusNotFound, "game not found")
-				return
-			}
-			h.errorResponse(w, http.StatusInternalServerError, "failed to get game")
-			return
-		}
-		gameID = g.ID
-	} else {
-		gameID = id
+		h.errorResponse(w, http.StatusBadRequest, "invalid game id format")
+		return
 	}
 
 	// Parse pagination
 	limit := parseIntParam(r, "limit", 50)
 
 	// Get leaderboard by tier
-	tier := player.Tier(tierStr)
-	entries, err := h.statsRepo.GetLeaderboardByTier(ctx, gameID, tier, limit)
+	entries, err := h.service.GetLeaderboardByTier(ctx, gameID, tierStr, limit)
 	if err != nil {
 		h.logger.Error("failed to get leaderboard by tier", "game_id", gameID, "tier", tierStr, "error", err)
-		h.errorResponse(w, http.StatusInternalServerError, "failed to get leaderboard")
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, map[string]interface{}{
+	response := map[string]interface{}{
 		"game_id": gameID.String(),
 		"tier":    tierStr,
 		"entries": entries,
 		"limit":   limit,
-	})
+	}
+
+	h.jsonResponse(w, http.StatusOK, response)
 }
 
 // GetPlayerRank handles GET /api/v1/leaderboard/{gameId}/player/{playerId}
@@ -222,60 +131,32 @@ func (h *LeaderboardHandler) GetPlayerRank(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get game ID
-	var gameID uuid.UUID
-	id, err := uuid.Parse(gameIDStr)
+	// Parse IDs
+	gameID, err := uuid.Parse(gameIDStr)
 	if err != nil {
-		g, err := h.gameRepo.GetBySlug(ctx, gameIDStr)
-		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
-				h.errorResponse(w, http.StatusNotFound, "game not found")
-				return
-			}
-			h.errorResponse(w, http.StatusInternalServerError, "failed to get game")
-			return
-		}
-		gameID = g.ID
-	} else {
-		gameID = id
+		h.errorResponse(w, http.StatusBadRequest, "invalid game id format")
+		return
 	}
 
-	// Parse player ID
 	playerID, err := uuid.Parse(playerIDStr)
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "invalid player id")
+		h.errorResponse(w, http.StatusBadRequest, "invalid player id format")
 		return
 	}
 
 	// Get player rank
-	rank, err := h.statsRepo.GetPlayerRank(ctx, gameID, playerID)
+	rankResp, err := h.service.GetPlayerRank(ctx, playerID, gameID)
 	if err != nil {
-		if errors.Is(err, mongodb.ErrPlayerStatsNotFound) {
-			h.errorResponse(w, http.StatusNotFound, "player stats not found")
-			return
-		}
 		h.logger.Error("failed to get player rank", "game_id", gameID, "player_id", playerID, "error", err)
-		h.errorResponse(w, http.StatusInternalServerError, "failed to get player rank")
+		if errors.Is(err, player.ErrStatsNotFound) {
+			h.errorResponse(w, http.StatusNotFound, "player has no stats for this game")
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, "failed to get player rank")
+		}
 		return
 	}
 
-	// Get total players to calculate percentile
-	total, _ := h.statsRepo.CountByGame(ctx, gameID)
-	percentile := 0.0
-	if total > 0 {
-		percentile = float64(total-rank.Rank+1) / float64(total) * 100
-	}
-
-	response := PlayerRankResponse{
-		PlayerID:     playerID.String(),
-		GameID:       gameID.String(),
-		Rank:         rank.Rank,
-		RankingScore: rank.RankingScore,
-		Tier:         string(rank.Tier),
-		Percentile:   percentile,
-	}
-
-	h.jsonResponse(w, http.StatusOK, response)
+	h.jsonResponse(w, http.StatusOK, rankResp)
 }
 
 // GetTierDistribution handles GET /api/v1/leaderboard/{gameId}/tiers
@@ -288,44 +169,25 @@ func (h *LeaderboardHandler) GetTierDistribution(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Get game ID
-	var gameID uuid.UUID
-	id, err := uuid.Parse(gameIDStr)
+	// Parse game ID
+	gameID, err := uuid.Parse(gameIDStr)
 	if err != nil {
-		g, err := h.gameRepo.GetBySlug(ctx, gameIDStr)
-		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
-				h.errorResponse(w, http.StatusNotFound, "game not found")
-				return
-			}
-			h.errorResponse(w, http.StatusInternalServerError, "failed to get game")
-			return
-		}
-		gameID = g.ID
-	} else {
-		gameID = id
+		h.errorResponse(w, http.StatusBadRequest, "invalid game id format")
+		return
 	}
 
 	// Get tier distribution
-	distribution, err := h.statsRepo.GetTierDistribution(ctx, gameID)
+	distribution, total, err := h.service.GetTierDistribution(ctx, gameID)
 	if err != nil {
 		h.logger.Error("failed to get tier distribution", "game_id", gameID, "error", err)
 		h.errorResponse(w, http.StatusInternalServerError, "failed to get tier distribution")
 		return
 	}
 
-	// Convert to string keys and calculate total
-	stringDist := make(map[string]int64)
-	var total int64
-	for tier, count := range distribution {
-		stringDist[string(tier)] = count
-		total += count
-	}
-
-	response := TierDistributionResponse{
-		GameID:       gameID.String(),
-		Distribution: stringDist,
-		TotalPlayers: total,
+	response := map[string]interface{}{
+		"game_id":       gameID.String(),
+		"distribution":  distribution,
+		"total_players": total,
 	}
 
 	h.jsonResponse(w, http.StatusOK, response)

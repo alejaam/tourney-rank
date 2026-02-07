@@ -20,11 +20,6 @@ const (
 	PlayerStatsCollection = "player_stats"
 )
 
-var (
-	// ErrPlayerStatsNotFound is returned when player stats are not found.
-	ErrPlayerStatsNotFound = errors.New("player stats not found")
-)
-
 // playerStatsDocument represents the MongoDB document structure for player stats.
 type playerStatsDocument struct {
 	ID            string                 `bson:"_id"`
@@ -37,18 +32,6 @@ type playerStatsDocument struct {
 	LastMatchAt   *time.Time             `bson:"last_match_at"`
 	CreatedAt     time.Time              `bson:"created_at"`
 	UpdatedAt     time.Time              `bson:"updated_at"`
-}
-
-// LeaderboardEntry represents a single entry in the leaderboard.
-type LeaderboardEntry struct {
-	Rank          int                    `json:"rank"`
-	PlayerID      uuid.UUID              `json:"player_id"`
-	DisplayName   string                 `json:"display_name"`
-	AvatarURL     string                 `json:"avatar_url"`
-	RankingScore  float64                `json:"ranking_score"`
-	Tier          player.Tier            `json:"tier"`
-	MatchesPlayed int                    `json:"matches_played"`
-	Stats         map[string]interface{} `json:"stats"`
 }
 
 // PlayerStatsRepository implements player stats persistence using MongoDB.
@@ -84,7 +67,7 @@ func (r *PlayerStatsRepository) GetByID(ctx context.Context, id uuid.UUID) (*pla
 	err := r.collection.FindOne(ctx, bson.M{"_id": id.String()}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrPlayerStatsNotFound
+			return nil, player.ErrStatsNotFound
 		}
 		return nil, fmt.Errorf("find player stats by id: %w", err)
 	}
@@ -104,7 +87,7 @@ func (r *PlayerStatsRepository) GetByPlayerAndGame(ctx context.Context, playerID
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrPlayerStatsNotFound
+			return nil, player.ErrStatsNotFound
 		}
 		return nil, fmt.Errorf("find player stats by player and game: %w", err)
 	}
@@ -146,7 +129,7 @@ func (r *PlayerStatsRepository) GetOrCreate(ctx context.Context, playerID, gameI
 		return ps, nil
 	}
 
-	if !errors.Is(err, ErrPlayerStatsNotFound) {
+	if !errors.Is(err, player.ErrStatsNotFound) {
 		return nil, err
 	}
 
@@ -173,7 +156,7 @@ func (r *PlayerStatsRepository) Update(ctx context.Context, ps *player.PlayerSta
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrPlayerStatsNotFound
+		return player.ErrStatsNotFound
 	}
 
 	return nil
@@ -197,7 +180,7 @@ func (r *PlayerStatsRepository) UpdateRanking(ctx context.Context, id uuid.UUID,
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrPlayerStatsNotFound
+		return player.ErrStatsNotFound
 	}
 
 	return nil
@@ -230,14 +213,14 @@ func (r *PlayerStatsRepository) IncrementStats(ctx context.Context, id uuid.UUID
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrPlayerStatsNotFound
+		return player.ErrStatsNotFound
 	}
 
 	return nil
 }
 
 // GetLeaderboard retrieves the top players for a game.
-func (r *PlayerStatsRepository) GetLeaderboard(ctx context.Context, gameID uuid.UUID, limit, offset int64) ([]LeaderboardEntry, error) {
+func (r *PlayerStatsRepository) GetLeaderboard(ctx context.Context, gameID uuid.UUID, limit, offset int64) ([]player.LeaderboardEntry, error) {
 	pipeline := mongo.Pipeline{
 		// Match by game
 		{{Key: "$match", Value: bson.M{"game_id": gameID.String()}}},
@@ -276,7 +259,7 @@ func (r *PlayerStatsRepository) GetLeaderboard(ctx context.Context, gameID uuid.
 	}
 	defer cursor.Close(ctx)
 
-	var entries []LeaderboardEntry
+	var entries []player.LeaderboardEntry
 	rank := int(offset) + 1
 
 	for cursor.Next(ctx) {
@@ -296,7 +279,7 @@ func (r *PlayerStatsRepository) GetLeaderboard(ctx context.Context, gameID uuid.
 
 		playerID, _ := uuid.Parse(result.PlayerID)
 
-		entries = append(entries, LeaderboardEntry{
+		entries = append(entries, player.LeaderboardEntry{
 			Rank:          rank,
 			PlayerID:      playerID,
 			DisplayName:   result.DisplayName,
@@ -313,7 +296,7 @@ func (r *PlayerStatsRepository) GetLeaderboard(ctx context.Context, gameID uuid.
 }
 
 // GetLeaderboardByTier retrieves top players filtered by tier.
-func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID uuid.UUID, tier player.Tier, limit int64) ([]LeaderboardEntry, error) {
+func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID uuid.UUID, tier player.Tier, limit int64) ([]player.LeaderboardEntry, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{
 			"game_id": gameID.String(),
@@ -348,7 +331,7 @@ func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID
 	}
 	defer cursor.Close(ctx)
 
-	var entries []LeaderboardEntry
+	var entries []player.LeaderboardEntry
 	rank := 1
 
 	for cursor.Next(ctx) {
@@ -368,7 +351,7 @@ func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID
 
 		playerID, _ := uuid.Parse(result.PlayerID)
 
-		entries = append(entries, LeaderboardEntry{
+		entries = append(entries, player.LeaderboardEntry{
 			Rank:          rank,
 			PlayerID:      playerID,
 			DisplayName:   result.DisplayName,
@@ -384,15 +367,8 @@ func (r *PlayerStatsRepository) GetLeaderboardByTier(ctx context.Context, gameID
 	return entries, nil
 }
 
-// PlayerRankInfo contains rank information for a player.
-type PlayerRankInfo struct {
-	Rank         int64
-	RankingScore float64
-	Tier         player.Tier
-}
-
 // GetPlayerRank retrieves a player's rank in a game.
-func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gameID uuid.UUID) (*PlayerRankInfo, error) {
+func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gameID uuid.UUID) (*player.PlayerRankInfo, error) {
 	// Get player's stats first
 	ps, err := r.GetByPlayerAndGame(ctx, playerID, gameID)
 	if err != nil {
@@ -408,7 +384,7 @@ func (r *PlayerStatsRepository) GetPlayerRank(ctx context.Context, playerID, gam
 		return nil, fmt.Errorf("count higher ranked players: %w", err)
 	}
 
-	return &PlayerRankInfo{
+	return &player.PlayerRankInfo{
 		Rank:         count + 1,
 		RankingScore: ps.RankingScore,
 		Tier:         ps.Tier,
@@ -459,7 +435,7 @@ func (r *PlayerStatsRepository) GetTierDistribution(ctx context.Context, gameID 
 }
 
 // GetTopStatsByGame returns top N players for a specific stat in a game.
-func (r *PlayerStatsRepository) GetTopStatsByGame(ctx context.Context, gameID uuid.UUID, statName string, limit int64) ([]LeaderboardEntry, error) {
+func (r *PlayerStatsRepository) GetTopStatsByGame(ctx context.Context, gameID uuid.UUID, statName string, limit int64) ([]player.LeaderboardEntry, error) {
 	statField := "stats." + statName
 
 	pipeline := mongo.Pipeline{
@@ -493,7 +469,7 @@ func (r *PlayerStatsRepository) GetTopStatsByGame(ctx context.Context, gameID uu
 	}
 	defer cursor.Close(ctx)
 
-	var entries []LeaderboardEntry
+	var entries []player.LeaderboardEntry
 	rank := 1
 
 	for cursor.Next(ctx) {
@@ -513,7 +489,7 @@ func (r *PlayerStatsRepository) GetTopStatsByGame(ctx context.Context, gameID uu
 
 		playerID, _ := uuid.Parse(result.PlayerID)
 
-		entries = append(entries, LeaderboardEntry{
+		entries = append(entries, player.LeaderboardEntry{
 			Rank:          rank,
 			PlayerID:      playerID,
 			DisplayName:   result.DisplayName,

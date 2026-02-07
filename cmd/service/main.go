@@ -16,6 +16,7 @@ import (
 	"github.com/melisource/tourney-rank/internal/infra/mongodb"
 	"github.com/melisource/tourney-rank/internal/usecase/admin"
 	"github.com/melisource/tourney-rank/internal/usecase/auth"
+	leaderboardusecase "github.com/melisource/tourney-rank/internal/usecase/leaderboard"
 	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
 	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
 )
@@ -96,6 +97,7 @@ func run() error {
 	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
 	userService := userusecase.NewService(userRepo)
 	playerService := playerusecase.NewService(playerRepo)
+	leaderboardService := leaderboardusecase.NewService(playerStatsRepo, gameRepo)
 
 	// Initialize admin services
 	adminUserService := admin.NewUserService(userRepo)
@@ -104,7 +106,7 @@ func run() error {
 
 	// Initialize HTTP handlers
 	gameHandler := handlers.NewGameHandler(gameRepo, logger)
-	leaderboardHandler := handlers.NewLeaderboardHandler(playerStatsRepo, gameRepo, logger)
+	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService, logger)
 	authHandler := handlers.NewAuthHandler(authService, userService, logger)
 	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
 	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)

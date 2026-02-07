@@ -21,9 +21,6 @@ const (
 )
 
 var (
-	// ErrPlayerNotFound is returned when a player is not found.
-	ErrPlayerNotFound = errors.New("player not found")
-
 	// ErrPlayerAlreadyExists is returned when trying to create a player that already exists.
 	ErrPlayerAlreadyExists = errors.New("player already exists")
 )
@@ -80,7 +77,7 @@ func (r *PlayerRepository) GetByID(ctx context.Context, id string) (*player.Play
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrPlayerNotFound
+			return nil, player.ErrNotFound
 		}
 		return nil, fmt.Errorf("find player by id: %w", err)
 	}
@@ -95,7 +92,7 @@ func (r *PlayerRepository) GetByUserID(ctx context.Context, userID string) (*pla
 	err := r.collection.FindOne(ctx, bson.M{"user_id": userID}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrPlayerNotFound
+			return nil, player.ErrNotFound
 		}
 		return nil, fmt.Errorf("find player by user id: %w", err)
 	}
@@ -114,7 +111,7 @@ func (r *PlayerRepository) GetByPlatformID(ctx context.Context, platform, platfo
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrPlayerNotFound
+			return nil, player.ErrNotFound
 		}
 		return nil, fmt.Errorf("find player by platform id: %w", err)
 	}
@@ -237,7 +234,7 @@ func (r *PlayerRepository) Update(ctx context.Context, p *player.Player) error {
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrPlayerNotFound
+		return player.ErrNotFound
 	}
 
 	return nil
@@ -251,7 +248,7 @@ func (r *PlayerRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		return ErrPlayerNotFound
+		return player.ErrNotFound
 	}
 
 	return nil

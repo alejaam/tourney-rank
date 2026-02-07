@@ -94,7 +94,7 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.logger.Error("failed to update player profile", "user_id", userID, "error", err)
 
-		if errors.Is(err, mongodb.ErrPlayerNotFound) {
+		if errors.Is(err, playerdomain.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "player profile not found")
 			return
 		}
@@ -294,7 +294,7 @@ func (h *PlayerHandler) GetMyGameStats(w http.ResponseWriter, r *http.Request) {
 	// Get player stats for this game
 	ps, err := h.statsRepo.GetByPlayerAndGame(r.Context(), player.ID, gameID)
 	if err != nil {
-		if errors.Is(err, mongodb.ErrPlayerStatsNotFound) {
+		if errors.Is(err, playerdomain.ErrStatsNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "player has no stats for this game")
 			return
 		}

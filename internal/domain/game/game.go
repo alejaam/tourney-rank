@@ -9,6 +9,9 @@ import (
 )
 
 var (
+	// ErrNotFound is returned when a game is not found.
+	ErrNotFound = errors.New("game not found")
+
 	// ErrInvalidGameName is returned when game name is empty or invalid.
 	ErrInvalidGameName = errors.New("game name cannot be empty")
 

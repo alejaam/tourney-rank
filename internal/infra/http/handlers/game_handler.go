@@ -101,7 +101,7 @@ func (h *GameHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		// If not UUID, try to find by slug
 		g, err := h.repo.GetBySlug(ctx, idStr)
 		if err != nil {
-			if errors.Is(err, mongodb.ErrGameNotFound) {
+			if errors.Is(err, game.ErrNotFound) {
 				h.errorResponse(w, http.StatusNotFound, "game not found")
 				return
 			}
@@ -115,7 +115,7 @@ func (h *GameHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	g, err := h.repo.GetByID(ctx, id.String())
 	if err != nil {
-		if errors.Is(err, mongodb.ErrGameNotFound) {
+		if errors.Is(err, game.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "game not found")
 			return
 		}
@@ -210,7 +210,7 @@ func (h *GameHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.SetActive(ctx, id, req.Active); err != nil {
-		if errors.Is(err, mongodb.ErrGameNotFound) {
+		if errors.Is(err, game.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "game not found")
 			return
 		}
@@ -243,7 +243,7 @@ func (h *GameHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Delete(ctx, id.String()); err != nil {
-		if errors.Is(err, mongodb.ErrGameNotFound) {
+		if errors.Is(err, game.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "game not found")
 			return
 		}

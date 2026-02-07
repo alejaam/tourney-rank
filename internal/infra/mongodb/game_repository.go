@@ -21,9 +21,6 @@ const (
 )
 
 var (
-	// ErrGameNotFound is returned when a game is not found.
-	ErrGameNotFound = errors.New("game not found")
-
 	// ErrGameAlreadyExists is returned when trying to create a game that already exists.
 	ErrGameAlreadyExists = errors.New("game already exists")
 )
@@ -76,7 +73,7 @@ func (r *GameRepository) GetByID(ctx context.Context, id string) (*game.Game, er
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrGameNotFound
+			return nil, game.ErrNotFound
 		}
 		return nil, fmt.Errorf("find game by id: %w", err)
 	}
@@ -91,7 +88,7 @@ func (r *GameRepository) GetBySlug(ctx context.Context, slug string) (*game.Game
 	err := r.collection.FindOne(ctx, bson.M{"slug": slug}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrGameNotFound
+			return nil, game.ErrNotFound
 		}
 		return nil, fmt.Errorf("find game by slug: %w", err)
 	}
@@ -180,7 +177,7 @@ func (r *GameRepository) Update(ctx context.Context, g *game.Game) error {
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrGameNotFound
+		return game.ErrNotFound
 	}
 
 	return nil
@@ -194,7 +191,7 @@ func (r *GameRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		return ErrGameNotFound
+		return game.ErrNotFound
 	}
 
 	return nil
@@ -217,7 +214,7 @@ func (r *GameRepository) SetActive(ctx context.Context, id uuid.UUID, active boo
 	}
 
 	if result.MatchedCount == 0 {
-		return ErrGameNotFound
+		return game.ErrNotFound
 	}
 
 	return nil
