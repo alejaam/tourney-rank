@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	playerdomain "github.com/melisource/tourney-rank/internal/domain/player"
 	"github.com/melisource/tourney-rank/internal/infra/http/middleware"
 	"github.com/melisource/tourney-rank/internal/infra/mongodb"
 	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
@@ -93,8 +94,16 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.logger.Error("failed to update player profile", "user_id", userID, "error", err)
 
-		if errors.Is(err, errors.New("player not found")) {
+		if errors.Is(err, mongodb.ErrPlayerNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "player profile not found")
+			return
+		}
+		if errors.Is(err, playerdomain.ErrInvalidBirthYear) {
+			h.errorResponse(w, http.StatusBadRequest, "invalid birth_year")
+			return
+		}
+		if errors.Is(err, playerdomain.ErrInvalidPlatform) {
+			h.errorResponse(w, http.StatusBadRequest, "invalid preferred_platform")
 			return
 		}
 
@@ -121,9 +130,7 @@ func (h *PlayerHandler) CreateMyProfile(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var req struct {
-		DisplayName string `json:"display_name"`
-	}
+	var req playerusecase.CreateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errorResponse(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -134,10 +141,27 @@ func (h *PlayerHandler) CreateMyProfile(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	player, err := h.service.CreateProfile(r.Context(), userID, req.DisplayName)
+	if req.PreferredPlatform == "" {
+		h.errorResponse(w, http.StatusBadRequest, "preferred_platform is required")
+		return
+	}
+
+	player, err := h.service.CreateProfile(r.Context(), userID, req)
 	if err != nil {
 		h.logger.Error("failed to create player profile", "user_id", userID, "error", err)
 
+		if errors.Is(err, playerdomain.ErrInvalidUsername) {
+			h.errorResponse(w, http.StatusBadRequest, "invalid display_name")
+			return
+		}
+		if errors.Is(err, playerdomain.ErrInvalidPlatform) {
+			h.errorResponse(w, http.StatusBadRequest, "invalid preferred_platform")
+			return
+		}
+		if errors.Is(err, playerdomain.ErrInvalidBirthYear) {
+			h.errorResponse(w, http.StatusBadRequest, "invalid birth_year")
+			return
+		}
 		if err.Error() == "player profile already exists" {
 			h.errorResponse(w, http.StatusConflict, "player profile already exists")
 			return

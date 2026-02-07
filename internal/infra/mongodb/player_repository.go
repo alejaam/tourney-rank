@@ -30,16 +30,20 @@ var (
 
 // playerDocument represents the MongoDB document structure for a player.
 type playerDocument struct {
-	ID          string            `bson:"_id"`
-	UserID      string            `bson:"user_id"`
-	DisplayName string            `bson:"display_name"`
-	AvatarURL   string            `bson:"avatar_url"`
-	Bio         string            `bson:"bio"`
-	PlatformIDs map[string]string `bson:"platform_ids"`
-	IsBanned    bool              `bson:"is_banned"`
-	BannedAt    *time.Time        `bson:"banned_at,omitempty"`
-	CreatedAt   time.Time         `bson:"created_at"`
-	UpdatedAt   time.Time         `bson:"updated_at"`
+	ID                string            `bson:"_id"`
+	UserID            string            `bson:"user_id"`
+	DisplayName       string            `bson:"display_name"`
+	AvatarURL         string            `bson:"avatar_url,omitempty"`
+	Bio               string            `bson:"bio,omitempty"`
+	PlatformIDs       map[string]string `bson:"platform_ids,omitempty"`
+	BirthYear         int               `bson:"birth_year,omitempty"`
+	Region            string            `bson:"region,omitempty"`
+	PreferredPlatform string            `bson:"preferred_platform,omitempty"`
+	Language          string            `bson:"language,omitempty"`
+	IsBanned          bool              `bson:"is_banned"`
+	BannedAt          *time.Time        `bson:"banned_at,omitempty"`
+	CreatedAt         time.Time         `bson:"created_at"`
+	UpdatedAt         time.Time         `bson:"updated_at"`
 }
 
 // PlayerRepository implements player persistence using MongoDB.
@@ -288,16 +292,20 @@ func (r *PlayerRepository) EnsureIndexes(ctx context.Context) error {
 // toPlayerDocument converts a domain Player to a MongoDB document.
 func toPlayerDocument(p *player.Player) *playerDocument {
 	return &playerDocument{
-		ID:          p.ID.String(),
-		UserID:      p.UserID.String(),
-		DisplayName: p.DisplayName,
-		AvatarURL:   p.AvatarURL,
-		Bio:         p.Bio,
-		PlatformIDs: p.PlatformIDs,
-		IsBanned:    p.IsBanned,
-		BannedAt:    p.BannedAt,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+		ID:                p.ID.String(),
+		UserID:            p.UserID.String(),
+		DisplayName:       p.DisplayName,
+		AvatarURL:         p.AvatarURL,
+		Bio:               p.Bio,
+		PlatformIDs:       p.PlatformIDs,
+		BirthYear:         p.BirthYear,
+		Region:            p.Region,
+		PreferredPlatform: p.PreferredPlatform,
+		Language:          p.Language,
+		IsBanned:          p.IsBanned,
+		BannedAt:          p.BannedAt,
+		CreatedAt:         p.CreatedAt,
+		UpdatedAt:         p.UpdatedAt,
 	}
 }
 
@@ -319,15 +327,19 @@ func toPlayerEntity(doc *playerDocument) (*player.Player, error) {
 	}
 
 	return &player.Player{
-		ID:          id,
-		UserID:      userID,
-		DisplayName: doc.DisplayName,
-		AvatarURL:   doc.AvatarURL,
-		Bio:         doc.Bio,
-		PlatformIDs: platformIDs,
-		IsBanned:    doc.IsBanned,
-		BannedAt:    doc.BannedAt,
-		CreatedAt:   doc.CreatedAt,
-		UpdatedAt:   doc.UpdatedAt,
+		ID:                id,
+		UserID:            userID,
+		DisplayName:       doc.DisplayName,
+		AvatarURL:         doc.AvatarURL,
+		Bio:               doc.Bio,
+		PlatformIDs:       platformIDs,
+		BirthYear:         doc.BirthYear,
+		Region:            doc.Region,
+		PreferredPlatform: doc.PreferredPlatform,
+		Language:          doc.Language,
+		IsBanned:          doc.IsBanned,
+		BannedAt:          doc.BannedAt,
+		CreatedAt:         doc.CreatedAt,
+		UpdatedAt:         doc.UpdatedAt,
 	}, nil
 }

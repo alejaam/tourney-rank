@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { playerApi } from '../services/player';
 import { useAuthStore } from '../store/authStore';
-import { useState } from 'react';
 
 export const PlayerProfilePage = () => {
   const navigate = useNavigate();
@@ -157,7 +157,7 @@ export const PlayerProfilePage = () => {
                           {/* Progress bar */}
                           <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
                             <div
-                              className="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all"
+                              className="bg-linear-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all"
                               style={{
                                 width: `${Math.min(
                                   (gameStats.ranking_score / 1000) * 100,

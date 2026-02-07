@@ -170,6 +170,13 @@ func (r *Router) setupRoutes() {
 	if r.authHandler != nil {
 		r.mux.HandleFunc("POST /api/v1/auth/register", r.withMiddleware(r.authHandler.Register))
 		r.mux.HandleFunc("POST /api/v1/auth/login", r.withMiddleware(r.authHandler.Login))
+
+		// User info endpoint (protected)
+		if r.jwtSecret != "" {
+			authMw := r.createAuthMiddleware()
+			r.mux.Handle("POST /api/v1/auth/logout", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.authHandler.Logout))))
+			r.mux.Handle("GET /api/v1/users/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.authHandler.GetMe))))
+		}
 	}
 
 	// Game API routes

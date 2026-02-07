@@ -17,6 +17,7 @@ import (
 	"github.com/melisource/tourney-rank/internal/usecase/admin"
 	"github.com/melisource/tourney-rank/internal/usecase/auth"
 	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
+	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
 )
 
 // Version is set at build time via -ldflags.
@@ -93,6 +94,7 @@ func run() error {
 
 	// Initialize services
 	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
+	userService := userusecase.NewService(userRepo)
 	playerService := playerusecase.NewService(playerRepo)
 
 	// Initialize admin services
@@ -103,7 +105,7 @@ func run() error {
 	// Initialize HTTP handlers
 	gameHandler := handlers.NewGameHandler(gameRepo, logger)
 	leaderboardHandler := handlers.NewLeaderboardHandler(playerStatsRepo, gameRepo, logger)
-	authHandler := handlers.NewAuthHandler(authService, logger)
+	authHandler := handlers.NewAuthHandler(authService, userService, logger)
 	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
 	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
 

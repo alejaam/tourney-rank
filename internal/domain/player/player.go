@@ -17,6 +17,12 @@ var (
 
 	// ErrInvalidTier is returned when tier value is not recognized.
 	ErrInvalidTier = errors.New("invalid tier value")
+
+	// ErrInvalidBirthYear is returned when birth year is invalid.
+	ErrInvalidBirthYear = errors.New("birth year must be between 1900 and current year")
+
+	// ErrInvalidPlatform is returned when preferred platform is not recognized.
+	ErrInvalidPlatform = errors.New("invalid preferred platform")
 )
 
 // Tier represents player skill level.
@@ -36,18 +42,45 @@ const (
 	TierBeginner Tier = "beginner"
 )
 
+// Platform represents gaming platforms.
+type Platform string
+
+const (
+	// PlatformPC represents PC/Desktop gaming.
+	PlatformPC Platform = "PC"
+
+	// PlatformPlayStation represents PlayStation consoles.
+	PlatformPlayStation Platform = "PlayStation"
+
+	// PlatformXbox represents Xbox consoles.
+	PlatformXbox Platform = "Xbox"
+
+	// PlatformNintendo represents Nintendo consoles.
+	PlatformNintendo Platform = "Nintendo"
+
+	// PlatformMobile represents mobile gaming.
+	PlatformMobile Platform = "Mobile"
+
+	// PlatformCrossplay represents cross-platform gaming.
+	PlatformCrossplay Platform = "Crossplay"
+)
+
 // Player represents a player in the system.
 type Player struct {
-	ID          uuid.UUID         `bson:"_id" json:"id"`
-	UserID      uuid.UUID         `bson:"user_id" json:"user_id"`
-	DisplayName string            `bson:"display_name" json:"display_name"`
-	AvatarURL   string            `bson:"avatar_url" json:"avatar_url"`
-	Bio         string            `bson:"bio" json:"bio"`
-	PlatformIDs map[string]string `bson:"platform_ids" json:"platform_ids"` // e.g., {"activision_id": "...", "epic_id": "..."}
-	IsBanned    bool              `bson:"is_banned" json:"is_banned"`
-	BannedAt    *time.Time        `bson:"banned_at,omitempty" json:"banned_at,omitempty"`
-	CreatedAt   time.Time         `bson:"created_at" json:"created_at"`
-	UpdatedAt   time.Time         `bson:"updated_at" json:"updated_at"`
+	ID                uuid.UUID         `bson:"_id" json:"id"`
+	UserID            uuid.UUID         `bson:"user_id" json:"user_id"`
+	DisplayName       string            `bson:"display_name" json:"display_name"`
+	AvatarURL         string            `bson:"avatar_url,omitempty" json:"avatar_url,omitempty"`
+	Bio               string            `bson:"bio,omitempty" json:"bio,omitempty"`
+	PlatformIDs       map[string]string `bson:"platform_ids,omitempty" json:"platform_ids,omitempty"` // e.g., {"activision_id": "...", "epic_id": "..."}
+	BirthYear         int               `bson:"birth_year,omitempty" json:"birth_year,omitempty"`
+	Region            string            `bson:"region,omitempty" json:"region,omitempty"`
+	PreferredPlatform string            `bson:"preferred_platform,omitempty" json:"preferred_platform,omitempty"`
+	Language          string            `bson:"language,omitempty" json:"language,omitempty"`
+	IsBanned          bool              `bson:"is_banned" json:"is_banned"`
+	BannedAt          *time.Time        `bson:"banned_at,omitempty" json:"banned_at,omitempty"`
+	CreatedAt         time.Time         `bson:"created_at" json:"created_at"`
+	UpdatedAt         time.Time         `bson:"updated_at" json:"updated_at"`
 }
 
 // PlayerStats represents a player's statistics for a specific game.
@@ -90,6 +123,37 @@ func (p *Player) UpdateProfile(displayName, avatarURL, bio string) {
 	}
 	p.Bio = bio
 	p.UpdatedAt = time.Now()
+}
+
+// UpdateExtendedProfile updates extended profile fields.
+func (p *Player) UpdateExtendedProfile(birthYear int, region, preferredPlatform, language string) error {
+	// Validate birth year if provided
+	if birthYear > 0 {
+		currentYear := time.Now().Year()
+		if birthYear < 1900 || birthYear > currentYear {
+			return ErrInvalidBirthYear
+		}
+		p.BirthYear = birthYear
+	}
+
+	// Validate preferred platform if provided
+	if preferredPlatform != "" {
+		if !isValidPlatform(preferredPlatform) {
+			return ErrInvalidPlatform
+		}
+		p.PreferredPlatform = preferredPlatform
+	}
+
+	// Update other fields
+	if region != "" {
+		p.Region = region
+	}
+	if language != "" {
+		p.Language = language
+	}
+
+	p.UpdatedAt = time.Now()
+	return nil
 }
 
 // SetPlatformID sets a platform-specific ID for the player.
@@ -221,6 +285,16 @@ func (ps *PlayerStats) CalculateKDRatio() float64 {
 func isValidTier(tier Tier) bool {
 	switch tier {
 	case TierElite, TierAdvanced, TierIntermediate, TierBeginner:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValidPlatform checks if a platform value is valid.
+func isValidPlatform(platform string) bool {
+	switch Platform(platform) {
+	case PlatformPC, PlatformPlayStation, PlatformXbox, PlatformNintendo, PlatformMobile, PlatformCrossplay:
 		return true
 	default:
 		return false

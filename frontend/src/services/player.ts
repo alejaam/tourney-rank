@@ -1,20 +1,11 @@
 import api from "../lib/axios";
 import type {
+  CreateProfileRequest,
   Player,
   PlayerGamesSummary,
   PlayerGameStatsDetail,
+  UpdateProfileRequest,
 } from "../types/api";
-
-export interface UpdatePlayerProfileRequest {
-  display_name?: string;
-  avatar_url?: string;
-  bio?: string;
-  platform_ids?: Record<string, string>;
-}
-
-export interface CreatePlayerProfileRequest {
-  display_name: string;
-}
 
 export const playerApi = {
   /**
@@ -28,9 +19,7 @@ export const playerApi = {
   /**
    * Create my player profile
    */
-  createMyProfile: async (
-    data: CreatePlayerProfileRequest,
-  ): Promise<Player> => {
+  createMyProfile: async (data: CreateProfileRequest): Promise<Player> => {
     const response = await api.post<Player>("/players/me", data);
     return response.data;
   },
@@ -38,9 +27,7 @@ export const playerApi = {
   /**
    * Update my player profile
    */
-  updateMyProfile: async (
-    data: UpdatePlayerProfileRequest,
-  ): Promise<Player> => {
+  updateMyProfile: async (data: UpdateProfileRequest): Promise<Player> => {
     const response = await api.put<Player>("/players/me", data);
     return response.data;
   },

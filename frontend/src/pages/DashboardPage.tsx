@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { OnboardingBanner } from '../components/player';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { useLogout } from '../features/auth/hooks';
 import { playerApi } from '../services/player';
@@ -39,6 +40,9 @@ export const DashboardPage = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* Onboarding Banner - Show if player has default name */}
+                {player && <OnboardingBanner player={player} />}
 
                 {/* Player Profile Card */}
                 {isLoading ? (

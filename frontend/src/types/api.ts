@@ -52,9 +52,13 @@ export interface Player {
   id: string;
   user_id: string;
   display_name: string;
-  avatar_url: string;
-  bio: string;
-  platform_ids: Record<string, string>;
+  avatar_url?: string;
+  bio?: string;
+  platform_ids?: Record<string, string>;
+  birth_year?: number;
+  region?: string;
+  preferred_platform?: string;
+  language?: string;
   is_banned: boolean;
   banned_at?: string;
   created_at: string;
@@ -150,6 +154,29 @@ export interface UpdatePlayerRequest {
   avatar_url?: string;
   bio?: string;
   platform_ids?: Record<string, string>;
+}
+
+// Player Profile (for authenticated users creating/updating their own profile)
+export interface CreateProfileRequest {
+  display_name: string;
+  preferred_platform: string;
+  avatar_url?: string;
+  bio?: string;
+  platform_ids?: Record<string, string>;
+  birth_year?: number;
+  region?: string;
+  language?: string;
+}
+
+export interface UpdateProfileRequest {
+  display_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  platform_ids?: Record<string, string>;
+  birth_year?: number;
+  region?: string;
+  preferred_platform?: string;
+  language?: string;
 }
 
 // API Error
