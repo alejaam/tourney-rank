@@ -3,13 +3,22 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/melisource/tourney-rank/internal/config"
 	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
+	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
+	"github.com/melisource/tourney-rank/internal/infra/mongodb"
+	"github.com/melisource/tourney-rank/internal/usecase/admin"
+	"github.com/melisource/tourney-rank/internal/usecase/auth"
+	leaderboardusecase "github.com/melisource/tourney-rank/internal/usecase/leaderboard"
+	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
+	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
 )
 
 // Version is set at build time via -ldflags.
@@ -54,12 +63,53 @@ func run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// TODO: Initialize database connection when needed
-	// db, err := postgres.Connect(ctx, cfg.DatabaseURL)
-	// if err != nil {
-	//     return fmt.Errorf("connect to database: %w", err)
-	// }
-	// defer db.Close()
+	// Initialize MongoDB connection
+	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
+		URI:          cfg.MongoDBURI,
+		DatabaseName: cfg.MongoDBDatabase,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect to mongodb: %w", err)
+	}
+	defer mongoClient.Close(ctx)
+
+	// Initialize repositories
+	gameRepo := mongodb.NewGameRepository(mongoClient)
+	playerRepo := mongodb.NewPlayerRepository(mongoClient)
+	playerStatsRepo := mongodb.NewPlayerStatsRepository(mongoClient)
+	userRepo := mongodb.NewUserRepository(mongoClient)
+
+	// Ensure database indexes
+	if err := gameRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure game indexes", "error", err)
+	}
+	if err := playerRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure player indexes", "error", err)
+	}
+	if err := userRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure user indexes", "error", err)
+	}
+	if err := playerStatsRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure player stats indexes", "error", err)
+	}
+
+	// Initialize services
+	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
+	userService := userusecase.NewService(userRepo)
+	playerService := playerusecase.NewService(playerRepo)
+	leaderboardService := leaderboardusecase.NewService(playerStatsRepo, gameRepo)
+
+	// Initialize admin services
+	adminUserService := admin.NewUserService(userRepo)
+	adminGameService := admin.NewGameService(gameRepo)
+	adminPlayerService := admin.NewPlayerService(playerRepo)
+
+	// Initialize HTTP handlers
+	gameHandler := handlers.NewGameHandler(gameRepo, logger)
+	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService, logger)
+	authHandler := handlers.NewAuthHandler(authService, userService, logger)
+	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
+	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -70,13 +120,17 @@ func run() error {
 
 	// Setup HTTP router with options
 	routerOpts := []httpserver.RouterOption{
+		httpserver.WithAuthHandler(authHandler),
+		httpserver.WithAdminHandler(adminHandler),
+		httpserver.WithPlayerHandler(playerHandler),
+		httpserver.WithJWTSecret(cfg.JWTSecret),
 		httpserver.WithVersion(Version),
+		httpserver.WithMongoDBChecker(mongoClient.Ping),
+		httpserver.WithGameHandler(gameHandler),
+		httpserver.WithLeaderboardHandler(leaderboardHandler),
 	}
 
 	// Add health checkers if dependencies are configured
-	// if db != nil {
-	//     routerOpts = append(routerOpts, httpserver.WithDBChecker(db.Ping))
-	// }
 	// if cache != nil {
 	//     routerOpts = append(routerOpts, httpserver.WithRedisChecker(cache.Ping))
 	// }

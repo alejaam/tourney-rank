@@ -30,10 +30,10 @@ go.work.sum
 Thumbs.db
 
 # Node (for frontend)
-web/node_modules/
-web/dist/
-web/.next/
-web/.turbo/
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.turbo/
 
 # Logs
 *.log
@@ -46,3 +46,13 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# IA files
+AGENTS.md
+copilot-instructions.md
+.github/agents/
+.github/instructions/
+.github/skills/
+.github/prompts/
+.github/standards/
+.agent/

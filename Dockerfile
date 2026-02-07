@@ -21,7 +21,7 @@ COPY . .
 
 # Build the application for the target platform
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
-    go build -ldflags="-s -w -X main.Version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)" \
+    go build -ldflags="-s -w" \
     -o bin/tourneyrank ./cmd/service
 
 # Runtime stage - minimal image
@@ -36,7 +36,6 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /app/bin/tourneyrank .
-COPY --from=builder /app/migrations ./migrations
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app

@@ -16,7 +16,8 @@ type Config struct {
 	WSPort   string
 
 	// Database configuration
-	DatabaseURL string
+	MongoDBURI      string
+	MongoDBDatabase string
 
 	// Redis configuration
 	RedisURL string
@@ -25,6 +26,7 @@ type Config struct {
 	Environment     string
 	LogLevel        string
 	ShutdownTimeout time.Duration
+	JWTSecret       string
 
 	// Feature flags
 	EnableMetrics bool
@@ -38,14 +40,16 @@ func Load() (*Config, error) {
 		HTTPPort: getEnv("HTTP_PORT", "8080"),
 		WSPort:   getEnv("WS_PORT", "8081"),
 
-		// Database defaults (empty means not configured)
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RedisURL:    getEnv("REDIS_URL", ""),
+		// Database defaults
+		MongoDBURI:      getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+		MongoDBDatabase: getEnv("MONGODB_DATABASE", "tourneyrank"),
+		RedisURL:        getEnv("REDIS_URL", ""),
 
 		// Application defaults
 		Environment:     getEnv("ENVIRONMENT", "development"),
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
 		ShutdownTimeout: getDurationEnv("SHUTDOWN_TIMEOUT", 15*time.Second),
+		JWTSecret:       getEnv("JWT_SECRET", "super-secret-key-change-me"),
 
 		// Feature flags
 		EnableMetrics: getBoolEnv("ENABLE_METRICS", false),

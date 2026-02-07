@@ -9,6 +9,9 @@ import (
 )
 
 var (
+	// ErrNotFound is returned when a game is not found.
+	ErrNotFound = errors.New("game not found")
+
 	// ErrInvalidGameName is returned when game name is empty or invalid.
 	ErrInvalidGameName = errors.New("game name cannot be empty")
 
@@ -76,8 +79,8 @@ func NewGame(name, slug, description, platformIDFormat string, schema StatSchema
 		RankingWeights:   weights,
 		PlatformIDFormat: platformIDFormat,
 		IsActive:         true,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		CreatedAt:        time.Now().UTC(),
+		UpdatedAt:        time.Now().UTC(),
 	}, nil
 }
 

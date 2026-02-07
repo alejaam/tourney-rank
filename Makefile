@@ -1,10 +1,11 @@
-.PHONY: help run build test test-race lint fmt migrate-up migrate-down docker-up docker-down clean
+.PHONY: help run build test test-race lint fmt infra-up infra-down docker-up docker-down clean docker-logs install-tools setup
 
 # Variables
 APP_NAME=tourneyrank
 MAIN_PATH=./cmd/service
-MIGRATION_PATH=./migrations
-DATABASE_URL?=postgresql://tourneyrank:tourneyrank@localhost:5432/tourneyrank?sslmode=disable
+
+# Docker
+DOCKER_COMPOSE=docker compose
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -12,8 +13,8 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-run: ## Run the application locally
-	go run $(MAIN_PATH)/main.go
+run: ## Run the application locally (requires infra-up)
+	HTTP_PORT=8080 MONGODB_URI="mongodb://tourneyrank:tourneyrank@localhost:27017/tourneyrank?authSource=admin" MONGODB_DATABASE=tourneyrank REDIS_URL=redis://localhost:6379 go run $(MAIN_PATH)/main.go
 
 build: ## Build the application binary
 	go build -o bin/$(APP_NAME) $(MAIN_PATH)/main.go
@@ -41,41 +42,30 @@ vet: ## Run go vet
 tidy: ## Tidy go modules
 	go mod tidy
 
-migrate-up: ## Run database migrations up
-	@echo "Running migrations..."
-	migrate -path $(MIGRATION_PATH) -database "$(DATABASE_URL)" up
+infra-up: ## Start infrastructure (MongoDB, Redis)
+	$(DOCKER_COMPOSE) up -d mongodb redis
 
-migrate-down: ## Rollback last migration
-	@echo "Rolling back migration..."
-	migrate -path $(MIGRATION_PATH) -database "$(DATABASE_URL)" down 1
+infra-down: ## Stop infrastructure
+	$(DOCKER_COMPOSE) stop mongodb redis
 
-migrate-create: ## Create new migration (usage: make migrate-create NAME=create_users)
-	@if [ -z "$(NAME)" ]; then echo "NAME is required. Usage: make migrate-create NAME=migration_name"; exit 1; fi
-	migrate create -ext sql -dir $(MIGRATION_PATH) -seq $(NAME)
+docker-up: ## Start everything with Docker
+	$(DOCKER_COMPOSE) up --build
 
-docker-up: ## Start Docker containers
-	docker-compose up -d
-
-docker-down: ## Stop Docker containers
-	docker-compose down
-
-docker-logs: ## Show Docker logs
-	docker-compose logs -f
-
-docker-clean: ## Remove Docker containers and volumes
-	docker-compose down -v
+docker-down: ## Stop everything
+	$(DOCKER_COMPOSE) down
 
 clean: ## Clean build artifacts
-	rm -rf bin/
-	rm -f coverage.out coverage.html
+	rm -rf bin/ coverage.out coverage.html
+
+docker-logs: ## Show Docker logs
+	$(DOCKER_COMPOSE) logs -f
 
 install-tools: ## Install development tools
 	@echo "Installing development tools..."
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/tools/cmd/goimports@latest
-	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
-setup: install-tools docker-up migrate-up ## Setup development environment
-	@echo "Development environment ready!"
+setup: install-tools infra-up ## Setup development environment
+	@echo "Development environment ready! Run 'make run' to start the backend."
 
 .DEFAULT_GOAL := help

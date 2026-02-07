@@ -13,7 +13,8 @@ func TestLoad(t *testing.T) {
 	t.Run("loads defaults when no env vars set", func(t *testing.T) {
 		// Clear relevant env vars
 		os.Unsetenv("HTTP_PORT")
-		os.Unsetenv("DATABASE_URL")
+		os.Unsetenv("MONGODB_URI")
+		os.Unsetenv("MONGODB_DATABASE")
 		os.Unsetenv("ENVIRONMENT")
 
 		cfg, err := Load()
@@ -21,6 +22,8 @@ func TestLoad(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "8080", cfg.HTTPPort)
 		assert.Equal(t, "8081", cfg.WSPort)
+		assert.Equal(t, "mongodb://localhost:27017", cfg.MongoDBURI)
+		assert.Equal(t, "tourneyrank", cfg.MongoDBDatabase)
 		assert.Equal(t, "development", cfg.Environment)
 		assert.Equal(t, "info", cfg.LogLevel)
 		assert.Equal(t, 15*time.Second, cfg.ShutdownTimeout)
@@ -28,11 +31,13 @@ func TestLoad(t *testing.T) {
 
 	t.Run("loads from environment variables", func(t *testing.T) {
 		os.Setenv("HTTP_PORT", "3000")
-		os.Setenv("DATABASE_URL", "postgres://localhost/test")
+		os.Setenv("MONGODB_URI", "mongodb://localhost:27017/test")
+		os.Setenv("MONGODB_DATABASE", "testdb")
 		os.Setenv("ENVIRONMENT", "production")
 		defer func() {
 			os.Unsetenv("HTTP_PORT")
-			os.Unsetenv("DATABASE_URL")
+			os.Unsetenv("MONGODB_URI")
+			os.Unsetenv("MONGODB_DATABASE")
 			os.Unsetenv("ENVIRONMENT")
 		}()
 
@@ -40,7 +45,8 @@ func TestLoad(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "3000", cfg.HTTPPort)
-		assert.Equal(t, "postgres://localhost/test", cfg.DatabaseURL)
+		assert.Equal(t, "mongodb://localhost:27017/test", cfg.MongoDBURI)
+		assert.Equal(t, "testdb", cfg.MongoDBDatabase)
 		assert.Equal(t, "production", cfg.Environment)
 	})
 
