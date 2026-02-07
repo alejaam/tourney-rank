@@ -112,6 +112,33 @@ func (r *PlayerStatsRepository) GetByPlayerAndGame(ctx context.Context, playerID
 	return toPlayerStatsEntity(&doc)
 }
 
+// GetByPlayer retrieves all player stats for a specific player across all games.
+func (r *PlayerStatsRepository) GetByPlayer(ctx context.Context, playerID uuid.UUID) ([]*player.PlayerStats, error) {
+	filter := bson.M{"player_id": playerID.String()}
+
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("find player stats: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var docs []playerStatsDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode player stats: %w", err)
+	}
+
+	results := make([]*player.PlayerStats, 0, len(docs))
+	for i := range docs {
+		ps, err := toPlayerStatsEntity(&docs[i])
+		if err != nil {
+			return nil, fmt.Errorf("convert player stats: %w", err)
+		}
+		results = append(results, ps)
+	}
+
+	return results, nil
+}
+
 // GetOrCreate retrieves player stats or creates them if they don't exist.
 func (r *PlayerStatsRepository) GetOrCreate(ctx context.Context, playerID, gameID uuid.UUID) (*player.PlayerStats, error) {
 	ps, err := r.GetByPlayerAndGame(ctx, playerID, gameID)

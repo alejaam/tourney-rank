@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { AdminPage, DashboardPage, HomePage, LoginPage, RegisterPage } from './pages';
+import { AdminPage, DashboardPage, HomePage, LoginPage, PlayerProfilePage, RegisterPage } from './pages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +25,7 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/profile" element={<PlayerProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Route>
         </Routes>

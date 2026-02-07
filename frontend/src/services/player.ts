@@ -1,5 +1,9 @@
 import api from "../lib/axios";
-import type { Player } from "../types/api";
+import type {
+  Player,
+  PlayerGamesSummary,
+  PlayerGameStatsDetail,
+} from "../types/api";
 
 export interface UpdatePlayerProfileRequest {
   display_name?: string;
@@ -38,6 +42,24 @@ export const playerApi = {
     data: UpdatePlayerProfileRequest,
   ): Promise<Player> => {
     const response = await api.put<Player>("/players/me", data);
+    return response.data;
+  },
+
+  /**
+   * Get my player profile with all game stats
+   */
+  getMyProfileWithStats: async (): Promise<PlayerGamesSummary> => {
+    const response = await api.get<PlayerGamesSummary>("/players/me/stats");
+    return response.data;
+  },
+
+  /**
+   * Get my stats for a specific game including rank and percentile
+   */
+  getMyGameStats: async (gameId: string): Promise<PlayerGameStatsDetail> => {
+    const response = await api.get<PlayerGameStatsDetail>(
+      `/players/me/stats/${gameId}`,
+    );
     return response.data;
   },
 };

@@ -70,6 +70,35 @@ export interface LeaderboardEntry {
   stats: Record<string, number>;
 }
 
+// Player Stats
+export interface PlayerStats {
+  id: string;
+  player_id: string;
+  game_id: string;
+  game_name?: string;
+  ranking_score: number;
+  tier: "elite" | "advanced" | "intermediate" | "beginner";
+  matches_played: number;
+  stats: Record<string, number | string>;
+  last_match_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlayerGamesSummary {
+  player: Player;
+  games: Array<{
+    game_id: string;
+    game_name: string;
+    stats: PlayerStats;
+  }>;
+}
+
+export interface PlayerGameStatsDetail extends PlayerStats {
+  rank: number;
+  percentile: number;
+}
+
 // Admin API Types
 export interface ListUsersResponse {
   users: User[];

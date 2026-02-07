@@ -59,8 +59,13 @@ export const DashboardPage = () => {
                     </Card>
                 ) : player ? (
                     <Card className="mb-8">
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Player Profile</CardTitle>
+                            <Link to="/profile">
+                                <Button size="sm" variant="secondary">
+                                    View Full Profile
+                                </Button>
+                            </Link>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-start gap-4">

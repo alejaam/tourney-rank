@@ -105,7 +105,7 @@ func run() error {
 	leaderboardHandler := handlers.NewLeaderboardHandler(playerStatsRepo, gameRepo, logger)
 	authHandler := handlers.NewAuthHandler(authService, logger)
 	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
-	playerHandler := handlers.NewPlayerHandler(playerService, logger)
+	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)

@@ -211,6 +211,10 @@ func (r *Router) setupPlayerRoutes() {
 	r.mux.Handle("GET /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyProfile))))
 	r.mux.Handle("POST /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.CreateMyProfile))))
 	r.mux.Handle("PUT /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.UpdateMyProfile))))
+
+	// Player stats endpoints
+	r.mux.Handle("GET /api/v1/players/me/stats", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyStats))))
+	r.mux.Handle("GET /api/v1/players/me/stats/{gameId}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyGameStats))))
 }
 
 // setupAdminRoutes configures admin-only routes with authentication.
