@@ -5,7 +5,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +55,8 @@ export interface Player {
   avatar_url: string;
   bio: string;
   platform_ids: Record<string, string>;
+  is_banned: boolean;
+  banned_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -85,7 +87,7 @@ export interface ListPlayersResponse {
 }
 
 export interface UpdateRoleRequest {
-  role: 'user' | 'admin';
+  role: "user" | "admin";
 }
 
 export interface CreateGameRequest {

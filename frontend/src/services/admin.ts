@@ -1,23 +1,23 @@
-import api from '../lib/axios';
+import api from "../lib/axios";
 import type {
-    CreateGameRequest,
-    CreatePlayerRequest,
-    Game,
-    ListGamesResponse,
-    ListPlayersResponse,
-    ListUsersResponse,
-    Player,
-    UpdateGameRequest,
-    UpdatePlayerRequest,
-    UpdateRoleRequest,
-    User,
-} from '../types/api';
+  CreateGameRequest,
+  CreatePlayerRequest,
+  Game,
+  ListGamesResponse,
+  ListPlayersResponse,
+  ListUsersResponse,
+  Player,
+  UpdateGameRequest,
+  UpdatePlayerRequest,
+  UpdateRoleRequest,
+  User,
+} from "../types/api";
 
 export const adminApi = {
   // User Management
   users: {
     list: async (): Promise<ListUsersResponse> => {
-      const response = await api.get<ListUsersResponse>('/admin/users');
+      const response = await api.get<ListUsersResponse>("/admin/users");
       return response.data;
     },
 
@@ -38,7 +38,7 @@ export const adminApi = {
   // Game Management
   games: {
     list: async (): Promise<ListGamesResponse> => {
-      const response = await api.get<ListGamesResponse>('/admin/games');
+      const response = await api.get<ListGamesResponse>("/admin/games");
       return response.data;
     },
 
@@ -48,7 +48,7 @@ export const adminApi = {
     },
 
     create: async (data: CreateGameRequest): Promise<Game> => {
-      const response = await api.post<Game>('/admin/games', data);
+      const response = await api.post<Game>("/admin/games", data);
       return response.data;
     },
 
@@ -65,7 +65,7 @@ export const adminApi = {
   // Player Management
   players: {
     list: async (): Promise<ListPlayersResponse> => {
-      const response = await api.get<ListPlayersResponse>('/admin/players');
+      const response = await api.get<ListPlayersResponse>("/admin/players");
       return response.data;
     },
 
@@ -75,7 +75,7 @@ export const adminApi = {
     },
 
     create: async (data: CreatePlayerRequest): Promise<Player> => {
-      const response = await api.post<Player>('/admin/players', data);
+      const response = await api.post<Player>("/admin/players", data);
       return response.data;
     },
 
@@ -86,6 +86,16 @@ export const adminApi = {
 
     delete: async (id: string): Promise<void> => {
       await api.delete(`/admin/players/${id}`);
+    },
+
+    ban: async (id: string): Promise<Player> => {
+      const response = await api.patch<Player>(`/admin/players/${id}/ban`);
+      return response.data;
+    },
+
+    unban: async (id: string): Promise<Player> => {
+      const response = await api.patch<Player>(`/admin/players/${id}/unban`);
+      return response.data;
     },
   },
 };

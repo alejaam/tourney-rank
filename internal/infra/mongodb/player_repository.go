@@ -36,6 +36,8 @@ type playerDocument struct {
 	AvatarURL   string            `bson:"avatar_url"`
 	Bio         string            `bson:"bio"`
 	PlatformIDs map[string]string `bson:"platform_ids"`
+	IsBanned    bool              `bson:"is_banned"`
+	BannedAt    *time.Time        `bson:"banned_at,omitempty"`
 	CreatedAt   time.Time         `bson:"created_at"`
 	UpdatedAt   time.Time         `bson:"updated_at"`
 }
@@ -292,6 +294,8 @@ func toPlayerDocument(p *player.Player) *playerDocument {
 		AvatarURL:   p.AvatarURL,
 		Bio:         p.Bio,
 		PlatformIDs: p.PlatformIDs,
+		IsBanned:    p.IsBanned,
+		BannedAt:    p.BannedAt,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
 	}
@@ -321,6 +325,8 @@ func toPlayerEntity(doc *playerDocument) (*player.Player, error) {
 		AvatarURL:   doc.AvatarURL,
 		Bio:         doc.Bio,
 		PlatformIDs: platformIDs,
+		IsBanned:    doc.IsBanned,
+		BannedAt:    doc.BannedAt,
 		CreatedAt:   doc.CreatedAt,
 		UpdatedAt:   doc.UpdatedAt,
 	}, nil

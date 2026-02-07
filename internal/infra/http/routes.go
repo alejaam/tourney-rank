@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
+	"github.com/melisource/tourney-rank/internal/infra/http/middleware"
 )
 
 // HealthStatus represents the health check response.
@@ -53,6 +54,7 @@ type Router struct {
 	leaderboardHandler *handlers.LeaderboardHandler
 	authHandler        *handlers.AuthHandler
 	adminHandler       *handlers.AdminHandler
+	playerHandler      *handlers.PlayerHandler
 
 	// JWT secret for auth middleware
 	jwtSecret string
@@ -121,6 +123,13 @@ func WithJWTSecret(secret string) RouterOption {
 	}
 }
 
+// WithPlayerHandler sets the player handler.
+func WithPlayerHandler(h *handlers.PlayerHandler) RouterOption {
+	return func(r *Router) {
+		r.playerHandler = h
+	}
+}
+
 // NewRouter creates a new HTTP router with all routes configured.
 func NewRouter(logger *slog.Logger, opts ...RouterOption) *Router {
 	r := &Router{
@@ -180,6 +189,11 @@ func (r *Router) setupRoutes() {
 		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tiers", r.withMiddleware(r.leaderboardHandler.GetTierDistribution))
 	}
 
+	// Player API routes (protected by auth middleware only)
+	if r.playerHandler != nil && r.jwtSecret != "" {
+		r.setupPlayerRoutes()
+	}
+
 	// Admin API routes (protected by auth + admin middleware)
 	if r.adminHandler != nil && r.jwtSecret != "" {
 		r.setupAdminRoutes()
@@ -187,6 +201,16 @@ func (r *Router) setupRoutes() {
 
 	// Root handler
 	r.mux.HandleFunc("GET /", r.handleRoot)
+}
+
+// setupPlayerRoutes configures player routes with authentication (no admin check).
+func (r *Router) setupPlayerRoutes() {
+	authMw := r.createAuthMiddleware()
+
+	// Player profile endpoints
+	r.mux.Handle("GET /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyProfile))))
+	r.mux.Handle("POST /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.CreateMyProfile))))
+	r.mux.Handle("PUT /api/v1/players/me", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.UpdateMyProfile))))
 }
 
 // setupAdminRoutes configures admin-only routes with authentication.
@@ -211,6 +235,8 @@ func (r *Router) setupAdminRoutes() {
 	r.mux.Handle("GET /api/v1/admin/players", mw(http.HandlerFunc(r.adminHandler.ListPlayers)))
 	r.mux.Handle("GET /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.GetPlayer)))
 	r.mux.Handle("POST /api/v1/admin/players", mw(http.HandlerFunc(r.adminHandler.CreatePlayer)))
+	r.mux.Handle("PATCH /api/v1/admin/players/{id}/ban", mw(http.HandlerFunc(r.adminHandler.BanPlayer)))
+	r.mux.Handle("PATCH /api/v1/admin/players/{id}/unban", mw(http.HandlerFunc(r.adminHandler.UnbanPlayer)))
 	r.mux.Handle("PUT /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.UpdatePlayer)))
 	r.mux.Handle("DELETE /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.DeletePlayer)))
 }
@@ -279,32 +305,12 @@ func (r *Router) withMiddlewareHandler(next http.Handler) http.Handler {
 
 // createAuthMiddleware creates the auth middleware.
 func (r *Router) createAuthMiddleware() func(http.Handler) http.Handler {
-	// Import here to avoid issues
-	authFunc := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			// This would normally use the middleware package's Auth function
-			// For now, we'll inline a basic version
-			authHeader := req.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-			// TODO: JWT validation will be added properly
-			next.ServeHTTP(w, req)
-		})
-	}
-	return authFunc
+	return middleware.Auth(r.jwtSecret, r.logger)
 }
 
 // createAdminMiddleware creates the admin-only middleware.
 func (r *Router) createAdminMiddleware() func(http.Handler) http.Handler {
-	adminFunc := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			// TODO: Check if user is admin (would extract from JWT)
-			next.ServeHTTP(w, req)
-		})
-	}
-	return adminFunc
+	return middleware.AdminOnly(r.logger)
 }
 
 // responseWriter wraps http.ResponseWriter to capture status code.

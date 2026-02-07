@@ -38,14 +38,16 @@ const (
 
 // Player represents a player in the system.
 type Player struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	DisplayName string
-	AvatarURL   string
-	Bio         string
-	PlatformIDs map[string]string // e.g., {"activision_id": "...", "epic_id": "..."}
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          uuid.UUID         `bson:"_id" json:"id"`
+	UserID      uuid.UUID         `bson:"user_id" json:"user_id"`
+	DisplayName string            `bson:"display_name" json:"display_name"`
+	AvatarURL   string            `bson:"avatar_url" json:"avatar_url"`
+	Bio         string            `bson:"bio" json:"bio"`
+	PlatformIDs map[string]string `bson:"platform_ids" json:"platform_ids"` // e.g., {"activision_id": "...", "epic_id": "..."}
+	IsBanned    bool              `bson:"is_banned" json:"is_banned"`
+	BannedAt    *time.Time        `bson:"banned_at,omitempty" json:"banned_at,omitempty"`
+	CreatedAt   time.Time         `bson:"created_at" json:"created_at"`
+	UpdatedAt   time.Time         `bson:"updated_at" json:"updated_at"`
 }
 
 // PlayerStats represents a player's statistics for a specific game.
@@ -97,6 +99,22 @@ func (p *Player) SetPlatformID(platform, id string) {
 	}
 	p.PlatformIDs[platform] = id
 	p.UpdatedAt = time.Now()
+}
+
+// Ban marks a player as banned.
+func (p *Player) Ban() {
+	now := time.Now().UTC()
+	p.IsBanned = true
+	p.BannedAt = &now
+	p.UpdatedAt = now
+}
+
+// Unban removes the banned status from a player.
+func (p *Player) Unban() {
+	now := time.Now().UTC()
+	p.IsBanned = false
+	p.BannedAt = nil
+	p.UpdatedAt = now
 }
 
 // GetPlatformID retrieves a platform-specific ID.

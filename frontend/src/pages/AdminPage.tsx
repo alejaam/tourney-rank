@@ -401,29 +401,24 @@ const GameManagement = () => {
 const PlayerManagement = () => {
     const [players, setPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({
-        user_id: '',
-        display_name: '',
-        bio: '',
-    });
+    const [actionPlayerId, setActionPlayerId] = useState<string | null>(null);
 
     useEffect(() => {
+        const loadPlayers = async () => {
+            try {
+                setLoading(true);
+                const data = await adminApi.players.list();
+                setPlayers(data.players || []);
+            } catch (error) {
+                console.error('Failed to load players:', error);
+                setPlayers([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         loadPlayers();
     }, []);
-
-    const loadPlayers = async () => {
-        try {
-            setLoading(true);
-            const data = await adminApi.players.list();
-            setPlayers(data.players || []);
-        } catch (error) {
-            console.error('Failed to load players:', error);
-            setPlayers([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this player?')) return;
@@ -437,17 +432,26 @@ const PlayerManagement = () => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleToggleBan = async (player: Player) => {
+        const nextAction = player.is_banned ? 'unban' : 'ban';
+        const confirmMsg = player.is_banned
+            ? 'Unban this player?'
+            : 'Ban this player?';
+
+        if (!confirm(confirmMsg)) return;
 
         try {
-            await adminApi.players.create(formData);
-            setFormData({ user_id: '', display_name: '', bio: '' });
-            setShowForm(false);
-            loadPlayers();
+            setActionPlayerId(player.id);
+            const updated = nextAction === 'ban'
+                ? await adminApi.players.ban(player.id)
+                : await adminApi.players.unban(player.id);
+
+            setPlayers(players.map((p) => (p.id === player.id ? updated : p)));
         } catch (error) {
-            console.error('Failed to create player:', error);
-            alert('Failed to create player');
+            console.error(`Failed to ${nextAction} player:`, error);
+            alert(`Failed to ${nextAction} player`);
+        } finally {
+            setActionPlayerId(null);
         }
     };
 
@@ -460,58 +464,13 @@ const PlayerManagement = () => {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle>Player Management</CardTitle>
-                    <Button onClick={() => setShowForm(!showForm)}>
-                        {showForm ? 'Cancel' : '+ Add Player'}
-                    </Button>
                 </div>
             </CardHeader>
             <CardContent>
-                {showForm && (
-                    <form onSubmit={handleSubmit} className="mb-6 p-4 border border-gray-700 rounded-lg">
-                        <div className="grid gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">
-                                    User ID
-                                </label>
-                                <Input
-                                    required
-                                    value={formData.user_id}
-                                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
-                                    placeholder="User UUID"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">
-                                    Display Name
-                                </label>
-                                <Input
-                                    required
-                                    value={formData.display_name}
-                                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                                    placeholder="ProGamer123"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">
-                                    Bio (optional)
-                                </label>
-                                <textarea
-                                    value={formData.bio}
-                                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    rows={3}
-                                    placeholder="Professional player..."
-                                />
-                            </div>
-                        </div>
-                        <Button type="submit" className="mt-4">Create Player</Button>
-                    </form>
-                )}
-
                 {players.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                         <p>No players yet</p>
-                        <p className="text-sm mt-2">Click "Add Player" to create one</p>
+                        <p className="text-sm mt-2">Player profiles are created automatically</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -519,6 +478,7 @@ const PlayerManagement = () => {
                             <thead>
                                 <tr className="border-b border-gray-700">
                                     <th className="text-left py-3 px-4 text-gray-400 font-medium">Display Name</th>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
                                     <th className="text-left py-3 px-4 text-gray-400 font-medium">Bio</th>
                                     <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
                                 </tr>
@@ -527,11 +487,36 @@ const PlayerManagement = () => {
                                 {players.map((player) => (
                                     <tr key={player.id} className="border-b border-gray-700">
                                         <td className="py-3 px-4 text-white">{player.display_name}</td>
+                                        <td className="py-3 px-4">
+                                            <span
+                                                className={`px-2 py-1 rounded text-xs font-medium ${player.is_banned
+                                                    ? 'bg-red-500/20 text-red-400'
+                                                    : 'bg-green-500/20 text-green-400'
+                                                    }`}
+                                            >
+                                                {player.is_banned ? 'Banned' : 'Active'}
+                                            </span>
+                                        </td>
                                         <td className="py-3 px-4 text-gray-400">{player.bio || '-'}</td>
                                         <td className="py-3 px-4">
-                                            <Button size="sm" variant="danger" onClick={() => handleDelete(player.id)}>
-                                                Delete
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant={player.is_banned ? 'secondary' : 'danger'}
+                                                    isLoading={actionPlayerId === player.id}
+                                                    onClick={() => handleToggleBan(player)}
+                                                >
+                                                    {player.is_banned ? 'Unban' : 'Ban'}
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() => handleDelete(player.id)}
+                                                    disabled={actionPlayerId === player.id}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

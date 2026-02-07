@@ -22,7 +22,7 @@ func NewPlayerService(playerRepo player.Repository) *PlayerService {
 
 // CreatePlayerRequest represents the data needed to create a player.
 type CreatePlayerRequest struct {
-	UserID      string            `json:"user_id"`
+	UserID      uuid.UUID         `json:"user_id"`
 	DisplayName string            `json:"display_name"`
 	AvatarURL   string            `json:"avatar_url"`
 	Bio         string            `json:"bio"`
@@ -45,12 +45,7 @@ type ListPlayersResponse struct {
 
 // CreatePlayer creates a new player.
 func (s *PlayerService) CreatePlayer(ctx context.Context, req CreatePlayerRequest) (*player.Player, error) {
-	userID, err := uuid.Parse(req.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-
-	p, err := player.NewPlayer(userID, req.DisplayName)
+	p, err := player.NewPlayer(req.UserID, req.DisplayName)
 	if err != nil {
 		return nil, fmt.Errorf("creating player entity: %w", err)
 	}
@@ -120,4 +115,36 @@ func (s *PlayerService) DeletePlayer(ctx context.Context, id string) error {
 		return fmt.Errorf("deleting player: %w", err)
 	}
 	return nil
+}
+
+// BanPlayer marks a player as banned.
+func (s *PlayerService) BanPlayer(ctx context.Context, id string) (*player.Player, error) {
+	p, err := s.playerRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting player: %w", err)
+	}
+
+	p.Ban()
+
+	if err := s.playerRepo.Update(ctx, p); err != nil {
+		return nil, fmt.Errorf("updating player: %w", err)
+	}
+
+	return p, nil
+}
+
+// UnbanPlayer removes the banned status from a player.
+func (s *PlayerService) UnbanPlayer(ctx context.Context, id string) (*player.Player, error) {
+	p, err := s.playerRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting player: %w", err)
+	}
+
+	p.Unban()
+
+	if err := s.playerRepo.Update(ctx, p); err != nil {
+		return nil, fmt.Errorf("updating player: %w", err)
+	}
+
+	return p, nil
 }

@@ -258,6 +258,42 @@ func (h *AdminHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	h.jsonResponse(w, http.StatusCreated, p)
 }
 
+// BanPlayer handles PATCH /api/v1/admin/players/:id/ban
+func (h *AdminHandler) BanPlayer(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.errorResponse(w, http.StatusBadRequest, "player id is required")
+		return
+	}
+
+	p, err := h.playerService.BanPlayer(r.Context(), id)
+	if err != nil {
+		h.logger.Error("failed to ban player", "id", id, "error", err)
+		h.errorResponse(w, http.StatusNotFound, "player not found")
+		return
+	}
+
+	h.jsonResponse(w, http.StatusOK, p)
+}
+
+// UnbanPlayer handles PATCH /api/v1/admin/players/:id/unban
+func (h *AdminHandler) UnbanPlayer(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.errorResponse(w, http.StatusBadRequest, "player id is required")
+		return
+	}
+
+	p, err := h.playerService.UnbanPlayer(r.Context(), id)
+	if err != nil {
+		h.logger.Error("failed to unban player", "id", id, "error", err)
+		h.errorResponse(w, http.StatusNotFound, "player not found")
+		return
+	}
+
+	h.jsonResponse(w, http.StatusOK, p)
+}
+
 // UpdatePlayer handles PUT /api/admin/players/:id
 func (h *AdminHandler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
