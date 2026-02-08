@@ -228,6 +228,66 @@ export interface Team {
   member_ids: string[];
   invite_code: string;
   logo_url?: string;
+  status: "pending" | "ready" | "active" | "eliminated" | "disbanded";
+  created_at: string;
+  updated_at: string;
+}
+
+// Brackets
+export type BracketFormat = "single_elimination" | "double_elimination" | "round_robin" | "swiss";
+export type MatchupStatus = "pending" | "in_progress" | "completed" | "canceled";
+
+export interface Matchup {
+  id: string;
+  bracket_id: string;
+  round: number;
+  match_number: number;
+  team1_id?: string;
+  team2_id?: string;
+  winner_id?: string;
+  status: MatchupStatus;
+  scheduled_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchupResponse extends Matchup {
+  team1_name?: string;
+  team2_name?: string;
+}
+
+export interface Bracket {
+  id: string;
+  tournament_id: string;
+  format: BracketFormat;
+  total_rounds: number;
+  current_round: number;
+  is_seeded: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BracketWithMatchups {
+  id: string;
+  tournament_id: string;
+  format: BracketFormat;
+  total_rounds: number;
+  current_round: number;
+  is_seeded: boolean;
+  created_at: string;
+  updated_at: string;
+  matchups: MatchupResponse[];
+}
+
+export interface GenerateBracketRequest {
+  tournament_id: string;
+  format: BracketFormat;
+  is_seeded: boolean;
+}
+
+export interface SetMatchupWinnerRequest {
+  winner_id: string;
+}
   created_at: string;
   updated_at: string;
 }

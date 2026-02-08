@@ -31,9 +31,14 @@ export const DashboardPage = () => {
                     </div>
                     <div className="flex gap-3">
                         {user?.role === 'admin' && (
-                            <Link to="/admin">
-                                <Button variant="secondary">Admin Panel</Button>
-                            </Link>
+                            <>
+                                <Link to="/admin">
+                                    <Button variant="secondary">Admin Panel</Button>
+                                </Link>
+                                <Link to="/tournament-admin">
+                                    <Button variant="secondary">Manage Tournaments</Button>
+                                </Link>
+                            </>
                         )}
                         <Button variant="secondary" onClick={logout}>
                             Logout
@@ -143,60 +148,144 @@ export const DashboardPage = () => {
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Tournaments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-400 mb-4">
-                                Browse and manage tournaments
-                            </p>
-                            <Link to="/tournaments">
-                                <Button>View Tournaments</Button>
-                            </Link>
-                        </CardContent>
+                    <Card className="hover:border-blue-500 transition-colors cursor-pointer">
+                        <Link to="/tournaments" className="block p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-blue-500/10 rounded-lg">
+                                    <svg
+                                        className="w-8 h-8 text-blue-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white">Join Tournament</h3>
+                                    <p className="text-sm text-gray-400">
+                                        Browse and join active tournaments
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Report Match</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-400 mb-4">
-                                Submit your match results and statistics
-                            </p>
-                            <Link to="/match-report">
-                                <Button>Go to Match Report</Button>
-                            </Link>
-                        </CardContent>
+                    <Card className="hover:border-green-500 transition-colors cursor-pointer">
+                        <Link to="/match-report" className="block p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-green-500/10 rounded-lg">
+                                    <svg
+                                        className="w-8 h-8 text-green-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white">Report Match</h3>
+                                    <p className="text-sm text-gray-400">
+                                        Submit your match results
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>View Leaderboard</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-400 mb-4">
-                                Check rankings across all tournaments
-                            </p>
-                            <Button disabled>Coming Soon</Button>
-                        </CardContent>
+                    <Card className="hover:border-purple-500 transition-colors cursor-pointer">
+                        <Link to="/profile" className="block p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-purple-500/10 rounded-lg">
+                                    <svg
+                                        className="w-8 h-8 text-purple-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white">View Stats</h3>
+                                    <p className="text-sm text-gray-400">
+                                        Check your rankings and stats
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
                     </Card>
                 </div>
-
-                {/* Recent Activity */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
+                        <CardTitle>Tournaments</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-center py-8 text-gray-500">
-                            <p>No recent activity</p>
-                            <p className="text-sm mt-2">Start by joining a tournament!</p>
-                        </div>
+                        <p className="text-gray-400 mb-4">
+                            Browse and manage tournaments
+                        </p>
+                        <Link to="/tournaments">
+                            <Button>View Tournaments</Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Report Match</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-gray-400 mb-4">
+                            Submit your match results and statistics
+                        </p>
+                        <Link to="/match-report">
+                            <Button>Go to Match Report</Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>View Leaderboard</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-gray-400 mb-4">
+                            Check rankings across all tournaments
+                        </p>
+                        <Button disabled>Coming Soon</Button>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Recent Activity */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-center py-8 text-gray-500">
+                        <p>No recent activity</p>
+                        <p className="text-sm mt-2">Start by joining a tournament!</p>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
+        </div >
     );
 };

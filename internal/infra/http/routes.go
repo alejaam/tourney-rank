@@ -58,6 +58,7 @@ type Router struct {
 	tournamentHandler  *handlers.TournamentHandler
 	teamHandler        *handlers.TeamHandler
 	matchHandler       *handlers.MatchHandler
+	bracketHandler     *handlers.BracketHandler
 
 	// JWT secret for auth middleware
 	jwtSecret string
@@ -154,6 +155,13 @@ func WithMatchHandler(h *handlers.MatchHandler) RouterOption {
 	}
 }
 
+// WithBracketHandler sets the bracket handler.
+func WithBracketHandler(h *handlers.BracketHandler) RouterOption {
+	return func(r *Router) {
+		r.bracketHandler = h
+	}
+}
+
 // NewRouter creates a new HTTP router with all routes configured.
 func NewRouter(logger *slog.Logger, opts ...RouterOption) *Router {
 	r := &Router{
@@ -238,6 +246,11 @@ func (r *Router) setupRoutes() {
 		r.setupMatchRoutes()
 	}
 
+	// Bracket API routes
+	if r.bracketHandler != nil {
+		r.setupBracketRoutes()
+	}
+
 	// Admin API routes (protected by auth + admin middleware)
 	if r.adminHandler != nil && r.jwtSecret != "" {
 		r.setupAdminRoutes()
@@ -315,6 +328,28 @@ func (r *Router) setupMatchRoutes() {
 	r.mux.HandleFunc("GET /api/v1/matches/{id}", r.withMiddleware(r.matchHandler.HandleGetMatch))
 
 	// Admin match endpoints (require auth + admin)
+}
+
+// setupBracketRoutes configures bracket routes.
+func (r *Router) setupBracketRoutes() {
+	// Public bracket endpoints (read-only)
+	r.mux.HandleFunc("GET /api/v1/brackets/{id}", r.withMiddleware(r.bracketHandler.GetBracket))
+	r.mux.HandleFunc("GET /api/v1/tournaments/{id}/bracket", r.withMiddleware(r.bracketHandler.GetTournamentBracket))
+
+	// Protected bracket endpoints (require auth for admin operations)
+	if r.jwtSecret != "" {
+		authMw := r.createAuthMiddleware()
+		adminMw := r.createAdminMiddleware()
+
+		// Admin-only: generate and manage brackets
+		r.mux.Handle("POST /api/v1/brackets/generate", r.withMiddlewareHandler(authMw(adminMw(http.HandlerFunc(r.bracketHandler.GenerateBracket)))))
+		r.mux.Handle("POST /api/v1/matchups/{id}/winner", r.withMiddlewareHandler(authMw(adminMw(http.HandlerFunc(r.bracketHandler.SetMatchupWinner)))))
+		r.mux.Handle("DELETE /api/v1/brackets/{id}", r.withMiddlewareHandler(authMw(adminMw(http.HandlerFunc(r.bracketHandler.DeleteBracket)))))
+	}
+}
+
+// setupMatchAdminRoutes configures admin-only match routes.
+func (r *Router) setupMatchAdminRoutes() {
 	mw := r.getMiddleware()
 	r.mux.Handle("GET /api/v1/admin/matches/unverified", mw(http.HandlerFunc(r.matchHandler.HandleGetUnverifiedMatches)))
 	r.mux.Handle("PATCH /api/v1/admin/matches/{id}/verify", mw(http.HandlerFunc(r.matchHandler.HandleVerifyMatch)))

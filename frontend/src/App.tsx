@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { AdminPage, DashboardPage, HomePage, LoginPage, MatchReportPage, PlayerProfilePage, RegisterPage, TournamentsPage } from './pages';
+import { AdminPage, DashboardPage, HomePage, LoginPage, MatchReportPage, PlayerProfilePage, RegisterPage, TournamentAdminPage, TournamentsPage } from './pages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +38,7 @@ function AppRoutes() {
         <Route path="/profile" element={<PlayerProfilePage />} />
         <Route path="/match-report" element={<MatchReportPage />} />
         <Route path="/tournaments" element={<TournamentsPage />} />
+        <Route path="/tournament-admin" element={<TournamentAdminPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Route>
     </Routes>

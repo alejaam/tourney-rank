@@ -16,6 +16,7 @@ import (
 	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
 	"github.com/alejaam/tourney-rank/internal/usecase/admin"
 	"github.com/alejaam/tourney-rank/internal/usecase/auth"
+	bracketusecase "github.com/alejaam/tourney-rank/internal/usecase/bracket"
 	leaderboardusecase "github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
 	matchusecase "github.com/alejaam/tourney-rank/internal/usecase/match"
 	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
@@ -84,6 +85,7 @@ func run() error {
 	tournamentRepo := mongodb.NewTournamentRepository(mongoClient.Database())
 	teamRepo := mongodb.NewTeamRepository(mongoClient.Database())
 	matchRepo := mongodb.NewMatchRepository(mongoClient.Database())
+	bracketRepo := mongodb.NewBracketRepository(mongoClient.Database())
 
 	// Ensure database indexes
 	if err := gameRepo.EnsureIndexes(ctx); err != nil {
@@ -116,6 +118,7 @@ func run() error {
 	tournamentService := tournamentusecase.NewService(tournamentRepo, teamRepo, gameRepo)
 	teamService := teamusecase.NewService(teamRepo, tournamentRepo, playerRepo)
 	matchService := matchusecase.NewService(matchRepo, teamRepo, tournamentRepo, playerRepo, playerStatsRepo, playerService, nil)
+	bracketService := bracketusecase.NewService(bracketRepo, teamRepo, tournamentRepo)
 
 	// Initialize admin services
 	adminUserService := admin.NewUserService(userRepo)
@@ -131,6 +134,7 @@ func run() error {
 	tournamentHandler := handlers.NewTournamentHandler(tournamentService, logger)
 	teamHandler := handlers.NewTeamHandler(teamService, logger)
 	matchHandler := handlers.NewMatchHandler(logger, matchService)
+	bracketHandler := handlers.NewBracketHandler(bracketService, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -152,6 +156,7 @@ func run() error {
 		httpserver.WithTournamentHandler(tournamentHandler),
 		httpserver.WithTeamHandler(teamHandler),
 		httpserver.WithMatchHandler(matchHandler),
+		httpserver.WithBracketHandler(bracketHandler),
 	}
 
 	// Add health checkers if dependencies are configured
