@@ -153,6 +153,11 @@ func (r *TournamentRepository) List(ctx context.Context, filter tournament.ListF
 		return nil, fmt.Errorf("decoding tournaments: %w", err)
 	}
 
+	// Return empty slice instead of nil if no results
+	if tournaments == nil {
+		tournaments = []*tournament.Tournament{}
+	}
+
 	return tournaments, nil
 }
 
@@ -173,6 +178,11 @@ func (r *TournamentRepository) GetByGameID(ctx context.Context, gameID uuid.UUID
 		return nil, fmt.Errorf("decoding tournaments: %w", err)
 	}
 
+	// Return empty slice instead of nil if no results
+	if tournaments == nil {
+		tournaments = []*tournament.Tournament{}
+	}
+
 	return tournaments, nil
 }
 
@@ -191,6 +201,11 @@ func (r *TournamentRepository) GetByStatus(ctx context.Context, status tournamen
 	var tournaments []*tournament.Tournament
 	if err := cursor.All(ctx, &tournaments); err != nil {
 		return nil, fmt.Errorf("decoding tournaments: %w", err)
+	}
+
+	// Return empty slice instead of nil if no results
+	if tournaments == nil {
+		tournaments = []*tournament.Tournament{}
 	}
 
 	return tournaments, nil

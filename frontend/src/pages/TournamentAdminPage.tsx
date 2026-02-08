@@ -157,13 +157,22 @@ export function TournamentAdminPage() {
                                             </Button>
                                         )}
                                         {selectedTournament.status === "open" && (
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => handleStatusChange("draft")}
-                                            >
-                                                Close Registration
-                                            </Button>
+                                            <>
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    onClick={() => handleStatusChange("active")}
+                                                >
+                                                    Start Tournament
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => handleStatusChange("draft")}
+                                                >
+                                                    Close Registration
+                                                </Button>
+                                            </>
                                         )}
                                         {selectedTournament.status === "active" && (
                                             <Button

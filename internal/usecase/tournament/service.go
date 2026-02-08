@@ -67,10 +67,30 @@ type ListTournamentsRequest struct {
 
 // TournamentListResponse represents a paginated list of tournaments.
 type TournamentListResponse struct {
-	Tournaments []*tournament.Tournament `json:"tournaments"`
-	Total       int64                    `json:"total"`
-	Limit       int                      `json:"limit"`
-	Offset      int                      `json:"offset"`
+	Tournaments []*TournamentResponse `json:"tournaments"`
+	Total       int64                 `json:"total"`
+	Limit       int                   `json:"limit"`
+	Offset      int                   `json:"offset"`
+}
+
+// TournamentResponse represents an enriched tournament with additional data.
+type TournamentResponse struct {
+	ID           uuid.UUID         `json:"id"`
+	GameID       uuid.UUID         `json:"game_id"`
+	GameName     string            `json:"game_name,omitempty"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description,omitempty"`
+	TeamSize     int               `json:"team_size"`
+	Status       tournament.Status `json:"status"`
+	Rules        tournament.Rules  `json:"rules"`
+	StartDate    time.Time         `json:"start_date"`
+	EndDate      time.Time         `json:"end_date"`
+	PrizePool    string            `json:"prize_pool,omitempty"`
+	BannerURL    string            `json:"banner_url,omitempty"`
+	CreatedBy    uuid.UUID         `json:"created_by"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
+	CurrentTeams int               `json:"current_teams"`
 }
 
 // TournamentStats represents statistics for a tournament.
@@ -183,10 +203,42 @@ func (s *Service) ListTournaments(ctx context.Context, req ListTournamentsReques
 		return nil, err
 	}
 
-	// For simplicity, not implementing total count here
-	// In a real implementation, you'd add a Count method to the repository
+	// Enrich tournaments with game names and team counts
+	enrichedTournaments := make([]*TournamentResponse, 0, len(tournaments))
+	for _, t := range tournaments {
+		enriched := &TournamentResponse{
+			ID:          t.ID,
+			GameID:      t.GameID,
+			Name:        t.Name,
+			Description: t.Description,
+			TeamSize:    int(t.TeamSize),
+			Status:      t.Status,
+			Rules:       t.Rules,
+			StartDate:   t.StartDate,
+			EndDate:     t.EndDate,
+			PrizePool:   t.PrizePool,
+			BannerURL:   t.BannerURL,
+			CreatedBy:   t.CreatedBy,
+			CreatedAt:   t.CreatedAt,
+			UpdatedAt:   t.UpdatedAt,
+		}
+
+		// Get game name
+		if g, err := s.gameRepo.GetByID(ctx, t.GameID.String()); err == nil && g != nil {
+			enriched.GameName = g.Name
+		}
+
+		// Count teams for this tournament
+		teams, err := s.teamRepo.GetByTournamentID(ctx, t.ID)
+		if err == nil {
+			enriched.CurrentTeams = len(teams)
+		}
+
+		enrichedTournaments = append(enrichedTournaments, enriched)
+	}
+
 	return &TournamentListResponse{
-		Tournaments: tournaments,
+		Tournaments: enrichedTournaments,
 		Total:       int64(len(tournaments)),
 		Limit:       req.Limit,
 		Offset:      req.Offset,

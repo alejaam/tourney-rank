@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { OnboardingBanner } from '../components/player';
+import { JoinTournamentModal } from '../components/tournament';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { useLogout } from '../features/auth/hooks';
 import { playerApi } from '../services/player';
@@ -10,6 +12,7 @@ import { useAuthStore } from '../store/authStore';
 export const DashboardPage = () => {
     const user = useAuthStore((state: AuthState) => state.user);
     const logout = useLogout();
+    const [showJoinModal, setShowJoinModal] = useState(false);
 
     // Fetch player profile
     const { data: player, isLoading, error } = useQuery({
@@ -149,7 +152,7 @@ export const DashboardPage = () => {
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <Card className="hover:border-blue-500 transition-colors cursor-pointer">
-                        <Link to="/tournaments" className="block p-6">
+                        <div onClick={() => setShowJoinModal(true)} className="block p-6">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-blue-500/10 rounded-lg">
                                     <svg
@@ -173,7 +176,7 @@ export const DashboardPage = () => {
                                     </p>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
                     </Card>
 
                     <Card className="hover:border-green-500 transition-colors cursor-pointer">
@@ -285,6 +288,12 @@ export const DashboardPage = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Join Tournament Modal */}
+            <JoinTournamentModal
+                isOpen={showJoinModal}
+                onClose={() => setShowJoinModal(false)}
+            />
         </div>
     );
 };

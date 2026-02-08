@@ -187,11 +187,16 @@ export interface TournamentRules {
   require_verification: boolean;
   allow_late_registration: boolean;
   registration_deadline?: string;
+  // Warzone specific requirements
+  max_kd?: number; // Maximum K/D ratio allowed
+  min_kd?: number; // Minimum K/D ratio required
+  min_matches_played?: number; // Minimum matches played required
 }
 
 export interface Tournament {
   id: string;
   game_id: string;
+  game_name?: string; // Added for display purposes
   name: string;
   description?: string;
   team_size: number;
@@ -204,6 +209,8 @@ export interface Tournament {
   created_by: string;
   created_at: string;
   updated_at: string;
+  // Stats for display
+  current_teams?: number; // Number of teams currently registered
 }
 
 export interface CreateTournamentRequest {
