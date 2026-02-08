@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"strconv"
 
+	tournamentdomain "github.com/alejaam/tourney-rank/internal/domain/tournament"
+	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
+	tournamentusecase "github.com/alejaam/tourney-rank/internal/usecase/tournament"
 	"github.com/google/uuid"
-	tournamentdomain "github.com/melisource/tourney-rank/internal/domain/tournament"
-	tournamentusecase "github.com/melisource/tourney-rank/internal/usecase/tournament"
 )
 
 // TournamentHandler handles HTTP requests for tournament operations.
@@ -36,9 +37,15 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get user ID from context (set by auth middleware)
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	userInfo, ok := middleware.GetUserInfo(r.Context())
 	if !ok {
 		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(userInfo.ID)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
@@ -224,9 +231,15 @@ func (h *TournamentHandler) GetActiveTournaments(w http.ResponseWriter, r *http.
 // GetPlayerActiveTournament handles GET /api/v1/players/me/active-tournament
 func (h *TournamentHandler) GetPlayerActiveTournament(w http.ResponseWriter, r *http.Request) {
 	// Get player ID from context (set by auth middleware)
-	playerID, ok := r.Context().Value("player_id").(uuid.UUID)
+	userInfo, ok := middleware.GetUserInfo(r.Context())
 	if !ok {
 		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	playerID, err := uuid.Parse(userInfo.ID)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 

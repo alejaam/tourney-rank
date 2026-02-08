@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/alejaam/tourney-rank/internal/domain/user"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/melisource/tourney-rank/internal/domain/user"
 )
 
 type contextKey string

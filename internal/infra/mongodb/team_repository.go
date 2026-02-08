@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/alejaam/tourney-rank/internal/domain/team"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/team"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

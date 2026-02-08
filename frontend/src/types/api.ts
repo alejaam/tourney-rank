@@ -179,6 +179,95 @@ export interface UpdateProfileRequest {
   language?: string;
 }
 
+// Tournaments
+export interface Tournament {
+  id: string;
+  game_id: string;
+  name: string;
+  team_size: "solo" | "duos" | "trios" | "quads";
+  status: "draft" | "open" | "active" | "finished" | "canceled";
+  start_date: string;
+  end_date: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTournamentRequest {
+  game_id: string;
+  name: string;
+  team_size: "solo" | "duos" | "trios" | "quads";
+  start_date: string;
+  end_date: string;
+}
+
+// Teams
+export interface Team {
+  id: string;
+  tournament_id: string;
+  name: string;
+  tag: string;
+  captain_id: string;
+  member_ids: string[];
+  invite_code: string;
+  logo_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamWithMembers {
+  id: string;
+  tournament_id: string;
+  name: string;
+  tag: string;
+  captain_id: string;
+  members: Array<{
+    id: string;
+    display_name: string;
+    avatar_url?: string;
+  }>;
+  invite_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Matches & Match Reports
+export interface PlayerMatchStats {
+  player_id: string;
+  kills: number;
+  damage: number;
+  assists: number;
+  deaths: number;
+  downs: number;
+  custom_stats?: Record<string, unknown>;
+}
+
+export interface Match {
+  id: string;
+  tournament_id: string;
+  team_id: string;
+  game_id: string;
+  status: "draft" | "verified" | "rejected";
+  team_placement: number;
+  team_kills: number;
+  player_stats: PlayerMatchStats[];
+  screenshot_url: string;
+  rejection_reason?: string;
+  submitted_by: string;
+  created_at: string;
+  updated_at: string;
+  verified_at?: string;
+}
+
+export interface SubmitMatchRequest {
+  tournament_id: string;
+  team_id: string;
+  team_placement: number;
+  team_kills: number;
+  player_stats: PlayerMatchStats[];
+  screenshot_url: string;
+}
+
 // API Error
 export interface ApiError {
   error: string;

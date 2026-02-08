@@ -5,9 +5,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/player"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/game"
-	"github.com/melisource/tourney-rank/internal/domain/player"
 )
 
 var (

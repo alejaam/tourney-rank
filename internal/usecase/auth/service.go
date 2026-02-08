@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alejaam/tourney-rank/internal/domain/user"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/melisource/tourney-rank/internal/domain/user"
 )
 
 // ErrInvalidCredentials is returned when login fails.

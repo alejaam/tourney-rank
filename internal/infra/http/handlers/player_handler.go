@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	playerdomain "github.com/alejaam/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
+	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
+	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
 	"github.com/google/uuid"
-	playerdomain "github.com/melisource/tourney-rank/internal/domain/player"
-	"github.com/melisource/tourney-rank/internal/infra/http/middleware"
-	"github.com/melisource/tourney-rank/internal/infra/mongodb"
-	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
 )
 
 // PlayerHandler handles HTTP requests for player operations.

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/melisource/tourney-rank/internal/domain/user"
-	"github.com/melisource/tourney-rank/internal/usecase/admin"
+	"github.com/alejaam/tourney-rank/internal/domain/user"
+	"github.com/alejaam/tourney-rank/internal/usecase/admin"
 )
 
 // AdminHandler handles HTTP requests for admin operations.

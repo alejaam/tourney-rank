@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/melisource/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/game"
 )
 
 // GameService provides admin operations for game management.

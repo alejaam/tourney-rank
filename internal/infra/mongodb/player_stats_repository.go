@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/melisource/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/domain/player"
 )
 
 const (

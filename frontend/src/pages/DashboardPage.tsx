@@ -141,6 +141,35 @@ export const DashboardPage = () => {
                     </Card>
                 </div>
 
+                {/* Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Report Match</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-gray-400 mb-4">
+                                Submit your match results and statistics
+                            </p>
+                            <Link to="/match-report">
+                                <Button>Go to Match Report</Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>View Leaderboard</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-gray-400 mb-4">
+                                Check rankings across all tournaments
+                            </p>
+                            <Button disabled>Coming Soon</Button>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 {/* Recent Activity */}
                 <Card>
                     <CardHeader>

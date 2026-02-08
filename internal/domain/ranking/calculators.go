@@ -5,8 +5,8 @@ import (
 	"context"
 	"math"
 
-	"github.com/melisource/tourney-rank/internal/domain/game"
-	"github.com/melisource/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/player"
 )
 
 // WarzoneCalculator implements ranking calculation for Call of Duty: Warzone.

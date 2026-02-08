@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
+	"github.com/alejaam/tourney-rank/internal/usecase/auth"
+	userusecase "github.com/alejaam/tourney-rank/internal/usecase/user"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/infra/http/middleware"
-	"github.com/melisource/tourney-rank/internal/usecase/auth"
-	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
 )
 
 // AuthHandler handles HTTP requests for authentication.

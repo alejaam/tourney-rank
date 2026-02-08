@@ -3,8 +3,8 @@ package user
 import (
 	"context"
 
+	"github.com/alejaam/tourney-rank/internal/domain/user"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/user"
 )
 
 // Service provides user operations for regular users.

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/alejaam/tourney-rank/internal/domain/player"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/player"
 )
 
 // Service provides player operations for regular users.

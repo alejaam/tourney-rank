@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
-	"github.com/melisource/tourney-rank/internal/infra/http/middleware"
+	"github.com/alejaam/tourney-rank/internal/infra/http/handlers"
+	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
 )
 
 // HealthStatus represents the health check response.
@@ -57,6 +57,7 @@ type Router struct {
 	playerHandler      *handlers.PlayerHandler
 	tournamentHandler  *handlers.TournamentHandler
 	teamHandler        *handlers.TeamHandler
+	matchHandler       *handlers.MatchHandler
 
 	// JWT secret for auth middleware
 	jwtSecret string
@@ -146,6 +147,13 @@ func WithTeamHandler(h *handlers.TeamHandler) RouterOption {
 	}
 }
 
+// WithMatchHandler sets the match handler.
+func WithMatchHandler(h *handlers.MatchHandler) RouterOption {
+	return func(r *Router) {
+		r.matchHandler = h
+	}
+}
+
 // NewRouter creates a new HTTP router with all routes configured.
 func NewRouter(logger *slog.Logger, opts ...RouterOption) *Router {
 	r := &Router{
@@ -217,6 +225,19 @@ func (r *Router) setupRoutes() {
 		r.setupPlayerRoutes()
 	}
 
+	// Tournament and Team routes
+	if r.tournamentHandler != nil {
+		r.setupTournamentRoutes()
+	}
+	if r.teamHandler != nil {
+		r.setupTeamRoutes()
+	}
+
+	// Match API routes (protected by auth middleware)
+	if r.matchHandler != nil && r.jwtSecret != "" {
+		r.setupMatchRoutes()
+	}
+
 	// Admin API routes (protected by auth + admin middleware)
 	if r.adminHandler != nil && r.jwtSecret != "" {
 		r.setupAdminRoutes()
@@ -279,6 +300,24 @@ func (r *Router) setupTeamRoutes() {
 		r.mux.Handle("GET /api/v1/tournaments/{tournamentId}/my-team", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.GetPlayerTeamInTournament))))
 		r.mux.Handle("GET /api/v1/players/me/teams", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.GetPlayerTeams))))
 	}
+}
+
+// setupMatchRoutes configures match routes.
+func (r *Router) setupMatchRoutes() {
+	authMw := r.createAuthMiddleware()
+
+	// Protected match endpoints (require auth)
+	r.mux.Handle("POST /api/v1/matches/report", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.matchHandler.HandleSubmitMatch))))
+	r.mux.Handle("GET /api/v1/players/me/matches", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.matchHandler.HandleGetPlayerMatches))))
+
+	// Public match endpoints (read-only)
+	r.mux.HandleFunc("GET /api/v1/matches/tournament/{id}", r.withMiddleware(r.matchHandler.HandleGetTournamentMatches))
+	r.mux.HandleFunc("GET /api/v1/matches/{id}", r.withMiddleware(r.matchHandler.HandleGetMatch))
+
+	// Admin match endpoints (require auth + admin)
+	mw := r.getMiddleware()
+	r.mux.Handle("GET /api/v1/admin/matches/unverified", mw(http.HandlerFunc(r.matchHandler.HandleGetUnverifiedMatches)))
+	r.mux.Handle("PATCH /api/v1/admin/matches/{id}/verify", mw(http.HandlerFunc(r.matchHandler.HandleVerifyMatch)))
 }
 
 // setupAdminRoutes configures admin-only routes with authentication.

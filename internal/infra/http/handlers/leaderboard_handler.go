@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/alejaam/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/player"
-	"github.com/melisource/tourney-rank/internal/usecase/leaderboard"
 )
 
 // LeaderboardHandler handles HTTP requests for leaderboard resources.

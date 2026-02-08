@@ -10,17 +10,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/melisource/tourney-rank/internal/config"
-	httpserver "github.com/melisource/tourney-rank/internal/infra/http"
-	"github.com/melisource/tourney-rank/internal/infra/http/handlers"
-	"github.com/melisource/tourney-rank/internal/infra/mongodb"
-	"github.com/melisource/tourney-rank/internal/usecase/admin"
-	"github.com/melisource/tourney-rank/internal/usecase/auth"
-	leaderboardusecase "github.com/melisource/tourney-rank/internal/usecase/leaderboard"
-	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
-	teamusecase "github.com/melisource/tourney-rank/internal/usecase/team"
-	tournamentusecase "github.com/melisource/tourney-rank/internal/usecase/tournament"
-	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
+	"github.com/alejaam/tourney-rank/internal/config"
+	httpserver "github.com/alejaam/tourney-rank/internal/infra/http"
+	"github.com/alejaam/tourney-rank/internal/infra/http/handlers"
+	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
+	"github.com/alejaam/tourney-rank/internal/usecase/admin"
+	"github.com/alejaam/tourney-rank/internal/usecase/auth"
+	leaderboardusecase "github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
+	matchusecase "github.com/alejaam/tourney-rank/internal/usecase/match"
+	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
+	teamusecase "github.com/alejaam/tourney-rank/internal/usecase/team"
+	tournamentusecase "github.com/alejaam/tourney-rank/internal/usecase/tournament"
+	userusecase "github.com/alejaam/tourney-rank/internal/usecase/user"
 )
 
 // Version is set at build time via -ldflags.
@@ -82,6 +83,7 @@ func run() error {
 	userRepo := mongodb.NewUserRepository(mongoClient)
 	tournamentRepo := mongodb.NewTournamentRepository(mongoClient.Database())
 	teamRepo := mongodb.NewTeamRepository(mongoClient.Database())
+	matchRepo := mongodb.NewMatchRepository(mongoClient.Database())
 
 	// Ensure database indexes
 	if err := gameRepo.EnsureIndexes(ctx); err != nil {
@@ -102,6 +104,9 @@ func run() error {
 	if err := teamRepo.EnsureIndexes(ctx); err != nil {
 		logger.Warn("failed to ensure team indexes", "error", err)
 	}
+	if err := matchRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure match indexes", "error", err)
+	}
 
 	// Initialize services
 	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
@@ -110,6 +115,7 @@ func run() error {
 	leaderboardService := leaderboardusecase.NewService(playerStatsRepo, gameRepo)
 	tournamentService := tournamentusecase.NewService(tournamentRepo, teamRepo, gameRepo)
 	teamService := teamusecase.NewService(teamRepo, tournamentRepo, playerRepo)
+	matchService := matchusecase.NewService(matchRepo, teamRepo, tournamentRepo, playerRepo, playerStatsRepo, playerService, nil)
 
 	// Initialize admin services
 	adminUserService := admin.NewUserService(userRepo)
@@ -124,6 +130,7 @@ func run() error {
 	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
 	tournamentHandler := handlers.NewTournamentHandler(tournamentService, logger)
 	teamHandler := handlers.NewTeamHandler(teamService, logger)
+	matchHandler := handlers.NewMatchHandler(logger, matchService)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -144,6 +151,7 @@ func run() error {
 		httpserver.WithLeaderboardHandler(leaderboardHandler),
 		httpserver.WithTournamentHandler(tournamentHandler),
 		httpserver.WithTeamHandler(teamHandler),
+		httpserver.WithMatchHandler(matchHandler),
 	}
 
 	// Add health checkers if dependencies are configured

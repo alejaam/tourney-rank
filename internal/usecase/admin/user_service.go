@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/melisource/tourney-rank/internal/domain/user"
+	"github.com/alejaam/tourney-rank/internal/domain/user"
 )
 
 // UserService provides admin operations for user management.

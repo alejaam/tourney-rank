@@ -5,10 +5,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/team"
+	"github.com/alejaam/tourney-rank/internal/domain/tournament"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/game"
-	"github.com/melisource/tourney-rank/internal/domain/team"
-	"github.com/melisource/tourney-rank/internal/domain/tournament"
 )
 
 // Service handles tournament use cases.

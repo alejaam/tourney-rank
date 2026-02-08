@@ -1,4 +1,4 @@
-module github.com/melisource/tourney-rank
+module github.com/alejaam/tourney-rank
 
 go 1.22
 

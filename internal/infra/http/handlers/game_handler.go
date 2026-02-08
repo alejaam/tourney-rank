@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/melisource/tourney-rank/internal/domain/game"
-	"github.com/melisource/tourney-rank/internal/infra/mongodb"
+	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
 )
 
 // GameHandler handles HTTP requests for game resources.

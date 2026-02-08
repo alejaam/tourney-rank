@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/player"
 	"github.com/google/uuid"
-	"github.com/melisource/tourney-rank/internal/domain/game"
-	"github.com/melisource/tourney-rank/internal/domain/player"
 )
 
 // LeaderboardEntry represents a single entry in the leaderboard response.

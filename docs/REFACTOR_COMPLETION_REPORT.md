@@ -98,7 +98,7 @@ Files modified:
 
 1. **Added import**:
    ```go
-   leaderboardusecase "github.com/melisource/tourney-rank/internal/usecase/leaderboard"
+   leaderboardusecase "github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
    ```
 
 2. **Service initialization**:
