@@ -18,6 +18,8 @@ import (
 	"github.com/melisource/tourney-rank/internal/usecase/auth"
 	leaderboardusecase "github.com/melisource/tourney-rank/internal/usecase/leaderboard"
 	playerusecase "github.com/melisource/tourney-rank/internal/usecase/player"
+	teamusecase "github.com/melisource/tourney-rank/internal/usecase/team"
+	tournamentusecase "github.com/melisource/tourney-rank/internal/usecase/tournament"
 	userusecase "github.com/melisource/tourney-rank/internal/usecase/user"
 )
 
@@ -78,6 +80,8 @@ func run() error {
 	playerRepo := mongodb.NewPlayerRepository(mongoClient)
 	playerStatsRepo := mongodb.NewPlayerStatsRepository(mongoClient)
 	userRepo := mongodb.NewUserRepository(mongoClient)
+	tournamentRepo := mongodb.NewTournamentRepository(mongoClient.Database())
+	teamRepo := mongodb.NewTeamRepository(mongoClient.Database())
 
 	// Ensure database indexes
 	if err := gameRepo.EnsureIndexes(ctx); err != nil {
@@ -92,12 +96,20 @@ func run() error {
 	if err := playerStatsRepo.EnsureIndexes(ctx); err != nil {
 		logger.Warn("failed to ensure player stats indexes", "error", err)
 	}
+	if err := tournamentRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure tournament indexes", "error", err)
+	}
+	if err := teamRepo.EnsureIndexes(ctx); err != nil {
+		logger.Warn("failed to ensure team indexes", "error", err)
+	}
 
 	// Initialize services
 	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
 	userService := userusecase.NewService(userRepo)
 	playerService := playerusecase.NewService(playerRepo)
 	leaderboardService := leaderboardusecase.NewService(playerStatsRepo, gameRepo)
+	tournamentService := tournamentusecase.NewService(tournamentRepo, teamRepo, gameRepo)
+	teamService := teamusecase.NewService(teamRepo, tournamentRepo, playerRepo)
 
 	// Initialize admin services
 	adminUserService := admin.NewUserService(userRepo)
@@ -110,6 +122,8 @@ func run() error {
 	authHandler := handlers.NewAuthHandler(authService, userService, logger)
 	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
 	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
+	tournamentHandler := handlers.NewTournamentHandler(tournamentService, logger)
+	teamHandler := handlers.NewTeamHandler(teamService, logger)
 
 	// TODO: Initialize Redis cache when needed
 	// cache, err := redis.Connect(ctx, cfg.RedisURL)
@@ -128,6 +142,8 @@ func run() error {
 		httpserver.WithMongoDBChecker(mongoClient.Ping),
 		httpserver.WithGameHandler(gameHandler),
 		httpserver.WithLeaderboardHandler(leaderboardHandler),
+		httpserver.WithTournamentHandler(tournamentHandler),
+		httpserver.WithTeamHandler(teamHandler),
 	}
 
 	// Add health checkers if dependencies are configured

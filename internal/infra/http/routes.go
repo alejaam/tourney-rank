@@ -55,6 +55,8 @@ type Router struct {
 	authHandler        *handlers.AuthHandler
 	adminHandler       *handlers.AdminHandler
 	playerHandler      *handlers.PlayerHandler
+	tournamentHandler  *handlers.TournamentHandler
+	teamHandler        *handlers.TeamHandler
 
 	// JWT secret for auth middleware
 	jwtSecret string
@@ -127,6 +129,20 @@ func WithJWTSecret(secret string) RouterOption {
 func WithPlayerHandler(h *handlers.PlayerHandler) RouterOption {
 	return func(r *Router) {
 		r.playerHandler = h
+	}
+}
+
+// WithTournamentHandler sets the tournament handler.
+func WithTournamentHandler(h *handlers.TournamentHandler) RouterOption {
+	return func(r *Router) {
+		r.tournamentHandler = h
+	}
+}
+
+// WithTeamHandler sets the team handler.
+func WithTeamHandler(h *handlers.TeamHandler) RouterOption {
+	return func(r *Router) {
+		r.teamHandler = h
 	}
 }
 
@@ -222,6 +238,47 @@ func (r *Router) setupPlayerRoutes() {
 	// Player stats endpoints
 	r.mux.Handle("GET /api/v1/players/me/stats", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyStats))))
 	r.mux.Handle("GET /api/v1/players/me/stats/{gameId}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.playerHandler.GetMyGameStats))))
+}
+
+// setupTournamentRoutes configures tournament routes.
+func (r *Router) setupTournamentRoutes() {
+	// Public tournament endpoints (no auth required)
+	r.mux.HandleFunc("GET /api/v1/tournaments", r.withMiddleware(r.tournamentHandler.ListTournaments))
+	r.mux.HandleFunc("GET /api/v1/tournaments/active", r.withMiddleware(r.tournamentHandler.GetActiveTournaments))
+	r.mux.HandleFunc("GET /api/v1/tournaments/{id}", r.withMiddleware(r.tournamentHandler.GetTournament))
+	r.mux.HandleFunc("GET /api/v1/tournaments/{id}/stats", r.withMiddleware(r.tournamentHandler.GetTournamentStats))
+
+	// Protected tournament endpoints (require auth)
+	if r.jwtSecret != "" {
+		authMw := r.createAuthMiddleware()
+		r.mux.Handle("POST /api/v1/tournaments", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.CreateTournament))))
+		r.mux.Handle("PATCH /api/v1/tournaments/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.UpdateTournament))))
+		r.mux.Handle("PATCH /api/v1/tournaments/{id}/status", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.UpdateTournamentStatus))))
+		r.mux.Handle("DELETE /api/v1/tournaments/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.DeleteTournament))))
+		r.mux.Handle("GET /api/v1/players/me/active-tournament", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.GetPlayerActiveTournament))))
+	}
+}
+
+// setupTeamRoutes configures team routes.
+func (r *Router) setupTeamRoutes() {
+	// Public team endpoints
+	r.mux.HandleFunc("GET /api/v1/teams/{id}", r.withMiddleware(r.teamHandler.GetTeam))
+	r.mux.HandleFunc("GET /api/v1/teams/{id}/members", r.withMiddleware(r.teamHandler.GetTeamWithMembers))
+	r.mux.HandleFunc("GET /api/v1/tournaments/{tournamentId}/teams", r.withMiddleware(r.teamHandler.ListTeamsByTournament))
+
+	// Protected team endpoints (require auth)
+	if r.jwtSecret != "" {
+		authMw := r.createAuthMiddleware()
+		r.mux.Handle("POST /api/v1/teams", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.CreateTeam))))
+		r.mux.Handle("POST /api/v1/teams/join", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.JoinTeam))))
+		r.mux.Handle("PATCH /api/v1/teams/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.UpdateTeam))))
+		r.mux.Handle("DELETE /api/v1/teams/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.DisbandTeam))))
+		r.mux.Handle("DELETE /api/v1/teams/{id}/members", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.RemoveMember))))
+		r.mux.Handle("POST /api/v1/teams/{id}/leave", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.LeaveTeam))))
+		r.mux.Handle("POST /api/v1/teams/{id}/transfer-captain", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.TransferCaptaincy))))
+		r.mux.Handle("GET /api/v1/tournaments/{tournamentId}/my-team", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.GetPlayerTeamInTournament))))
+		r.mux.Handle("GET /api/v1/players/me/teams", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.GetPlayerTeams))))
+	}
 }
 
 // setupAdminRoutes configures admin-only routes with authentication.
