@@ -348,13 +348,6 @@ func (r *Router) setupBracketRoutes() {
 	}
 }
 
-// setupMatchAdminRoutes configures admin-only match routes.
-func (r *Router) setupMatchAdminRoutes() {
-	mw := r.getMiddleware()
-	r.mux.Handle("GET /api/v1/admin/matches/unverified", mw(http.HandlerFunc(r.matchHandler.HandleGetUnverifiedMatches)))
-	r.mux.Handle("PATCH /api/v1/admin/matches/{id}/verify", mw(http.HandlerFunc(r.matchHandler.HandleVerifyMatch)))
-}
-
 // setupAdminRoutes configures admin-only routes with authentication.
 func (r *Router) setupAdminRoutes() {
 	// Import middleware package
