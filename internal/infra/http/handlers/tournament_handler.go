@@ -35,8 +35,6 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-
-	// Get user ID from context (set by auth middleware)
 	userInfo, ok := middleware.GetUserInfo(r.Context())
 	if !ok {
 		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")

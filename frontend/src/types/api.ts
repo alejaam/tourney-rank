@@ -180,14 +180,27 @@ export interface UpdateProfileRequest {
 }
 
 // Tournaments
+export interface TournamentRules {
+  max_teams: number;
+  min_matches: number;
+  max_matches: number;
+  require_verification: boolean;
+  allow_late_registration: boolean;
+  registration_deadline?: string;
+}
+
 export interface Tournament {
   id: string;
   game_id: string;
   name: string;
-  team_size: "solo" | "duos" | "trios" | "quads";
+  description?: string;
+  team_size: number;
   status: "draft" | "open" | "active" | "finished" | "canceled";
+  rules: TournamentRules;
   start_date: string;
   end_date: string;
+  prize_pool?: string;
+  banner_url?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -196,9 +209,13 @@ export interface Tournament {
 export interface CreateTournamentRequest {
   game_id: string;
   name: string;
-  team_size: "solo" | "duos" | "trios" | "quads";
+  description?: string;
+  team_size: 1 | 2 | 3 | 4;
   start_date: string;
   end_date: string;
+  prize_pool?: string;
+  banner_url?: string;
+  rules: TournamentRules;
 }
 
 // Teams

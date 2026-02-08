@@ -142,7 +142,21 @@ export const DashboardPage = () => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Tournaments</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-gray-400 mb-4">
+                                Browse and manage tournaments
+                            </p>
+                            <Link to="/tournaments">
+                                <Button>View Tournaments</Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+
                     <Card>
                         <CardHeader>
                             <CardTitle>Report Match</CardTitle>

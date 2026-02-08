@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { teamSizeToLabel } from "../../lib/utils";
 import { matchApi } from "../../services/matches";
 import { playerApi } from "../../services/player";
 import type {
@@ -225,7 +226,7 @@ export function MatchReportForm({ onSuccess }: MatchReportFormProps) {
                     </h3>
                     <p className="text-sm text-blue-700">Team: {team.name}</p>
                     <p className="text-sm text-blue-700">
-                        Team Size: {tournament.team_size}
+                        Team Size: {teamSizeToLabel(tournament.team_size)}
                     </p>
                 </div>
 
