@@ -11,6 +11,7 @@ import (
 	"github.com/alejaam/tourney-rank/internal/domain/game"
 	"github.com/alejaam/tourney-rank/internal/domain/match"
 	"github.com/alejaam/tourney-rank/internal/domain/player"
+	rounddomain "github.com/alejaam/tourney-rank/internal/domain/round"
 	"github.com/alejaam/tourney-rank/internal/domain/team"
 	"github.com/alejaam/tourney-rank/internal/domain/tournament"
 	"github.com/alejaam/tourney-rank/internal/domain/user"
@@ -22,6 +23,7 @@ import (
 	leaderboardusecase "github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
 	matchusecase "github.com/alejaam/tourney-rank/internal/usecase/match"
 	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
+	roundusecase "github.com/alejaam/tourney-rank/internal/usecase/round"
 	teamusecase "github.com/alejaam/tourney-rank/internal/usecase/team"
 	tournamentusecase "github.com/alejaam/tourney-rank/internal/usecase/tournament"
 	userusecase "github.com/alejaam/tourney-rank/internal/usecase/user"
@@ -47,6 +49,7 @@ type Container struct {
 	TeamRepoConcrete        *mongodb.TeamRepository
 	MatchRepoConcrete       *mongodb.MatchRepository
 	BracketRepoConcrete     *mongodb.BracketRepository
+	RoundRepoConcrete       *mongodb.RoundRepository
 
 	// Repositories (interfaces)
 	GameRepo        game.Repository
@@ -57,6 +60,7 @@ type Container struct {
 	TeamRepo        team.Repository
 	MatchRepo       match.Repository
 	BracketRepo     bracket.Repository
+	RoundRepo       rounddomain.Repository
 
 	// Services - Auth
 	AuthService *auth.Service
@@ -72,6 +76,9 @@ type Container struct {
 
 	// Services - Tournament
 	TournamentService *tournamentusecase.Service
+
+	// Services - Round
+	RoundService *roundusecase.Service
 
 	// Services - Team
 	TeamService *teamusecase.Service
@@ -94,6 +101,7 @@ type Container struct {
 	GameHandler        *handlers.GameHandler
 	LeaderboardHandler *handlers.LeaderboardHandler
 	TournamentHandler  *handlers.TournamentHandler
+	RoundHandler       *handlers.RoundHandler
 	TeamHandler        *handlers.TeamHandler
 	MatchHandler       *handlers.MatchHandler
 	BracketHandler     *handlers.BracketHandler
@@ -154,6 +162,7 @@ func (c *Container) initRepositories(ctx context.Context) error {
 	teamRepo := mongodb.NewTeamRepository(c.MongoClient.Database())
 	matchRepo := mongodb.NewMatchRepository(c.MongoClient.Database())
 	bracketRepo := mongodb.NewBracketRepository(c.MongoClient.Database())
+	roundRepo := mongodb.NewRoundRepository(c.MongoClient.Database())
 
 	// Store concrete implementations
 	c.GameRepoConcrete = gameRepo
@@ -164,6 +173,7 @@ func (c *Container) initRepositories(ctx context.Context) error {
 	c.TeamRepoConcrete = teamRepo
 	c.MatchRepoConcrete = matchRepo
 	c.BracketRepoConcrete = bracketRepo
+	c.RoundRepoConcrete = roundRepo
 
 	// Store as interfaces
 	c.GameRepo = gameRepo
@@ -174,6 +184,7 @@ func (c *Container) initRepositories(ctx context.Context) error {
 	c.TeamRepo = teamRepo
 	c.MatchRepo = matchRepo
 	c.BracketRepo = bracketRepo
+	c.RoundRepo = roundRepo
 
 	// Ensure indexes
 	repos := []struct {
@@ -190,6 +201,7 @@ func (c *Container) initRepositories(ctx context.Context) error {
 		{"team", teamRepo},
 		{"match", matchRepo},
 		{"bracket", bracketRepo},
+		{"round", roundRepo},
 	}
 
 	for _, r := range repos {
@@ -217,6 +229,9 @@ func (c *Container) initServices() error {
 
 	// Tournament service
 	c.TournamentService = tournamentusecase.NewService(c.TournamentRepo, c.TeamRepo, c.GameRepo)
+
+	// Round service
+	c.RoundService = roundusecase.NewService(c.RoundRepo, c.TournamentRepo)
 
 	// Team service
 	c.TeamService = teamusecase.NewService(c.TeamRepo, c.TournamentRepo, c.PlayerRepo)
@@ -250,7 +265,8 @@ func (c *Container) initHandlers() error {
 	c.PlayerHandler = handlers.NewPlayerHandler(c.PlayerService, c.PlayerStatsRepo, c.GameRepo, c.Logger)
 	c.GameHandler = handlers.NewGameHandler(c.GameRepo, c.Logger)
 	c.LeaderboardHandler = handlers.NewLeaderboardHandler(c.LeaderboardService, c.Logger)
-	c.TournamentHandler = handlers.NewTournamentHandler(c.TournamentService, c.PlayerService, c.Logger)
+	c.TournamentHandler = handlers.NewTournamentHandler(c.TournamentService, c.Logger)
+	c.RoundHandler = handlers.NewRoundHandler(c.RoundService, c.Logger)
 	c.TeamHandler = handlers.NewTeamHandler(c.TeamService, c.PlayerService, c.Logger)
 	c.MatchHandler = handlers.NewMatchHandler(c.Logger, c.MatchService, c.PlayerService)
 	c.BracketHandler = handlers.NewBracketHandler(c.BracketService, c.Logger)

@@ -74,6 +74,7 @@ func run() error {
 		httpserver.WithGameHandler(container.GameHandler),
 		httpserver.WithLeaderboardHandler(container.LeaderboardHandler),
 		httpserver.WithTournamentHandler(container.TournamentHandler),
+		httpserver.WithRoundHandler(container.RoundHandler),
 		httpserver.WithTeamHandler(container.TeamHandler),
 		httpserver.WithMatchHandler(container.MatchHandler),
 		httpserver.WithBracketHandler(container.BracketHandler),

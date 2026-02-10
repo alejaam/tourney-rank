@@ -59,6 +59,7 @@ type Router struct {
 	teamHandler        *handlers.TeamHandler
 	matchHandler       *handlers.MatchHandler
 	bracketHandler     *handlers.BracketHandler
+	roundHandler       *handlers.RoundHandler
 
 	// JWT secret for auth middleware
 	jwtSecret string
@@ -138,6 +139,13 @@ func WithPlayerHandler(h *handlers.PlayerHandler) RouterOption {
 func WithTournamentHandler(h *handlers.TournamentHandler) RouterOption {
 	return func(r *Router) {
 		r.tournamentHandler = h
+	}
+}
+
+// WithRoundHandler sets the round handler.
+func WithRoundHandler(h *handlers.RoundHandler) RouterOption {
+	return func(r *Router) {
+		r.roundHandler = h
 	}
 }
 
@@ -237,6 +245,9 @@ func (r *Router) setupRoutes() {
 	if r.tournamentHandler != nil {
 		r.setupTournamentRoutes()
 	}
+	if r.roundHandler != nil {
+		r.setupRoundRoutes()
+	}
 	if r.teamHandler != nil {
 		r.setupTeamRoutes()
 	}
@@ -290,6 +301,22 @@ func (r *Router) setupTournamentRoutes() {
 		r.mux.Handle("PATCH /api/v1/tournaments/{id}/status", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.UpdateTournamentStatus))))
 		r.mux.Handle("DELETE /api/v1/tournaments/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.DeleteTournament))))
 		r.mux.Handle("GET /api/v1/players/me/active-tournament", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.GetPlayerActiveTournament))))
+	}
+}
+
+// setupRoundRoutes configures round routes.
+func (r *Router) setupRoundRoutes() {
+	// Public round endpoints (read-only)
+	r.mux.HandleFunc("GET /api/v1/tournaments/{id}/rounds", r.withMiddleware(r.roundHandler.ListRounds))
+	r.mux.HandleFunc("GET /api/v1/tournaments/{id}/rounds/{roundNum}", r.withMiddleware(r.roundHandler.GetRound))
+
+	// Protected round endpoints (require auth)
+	if r.jwtSecret != "" {
+		authMw := r.createAuthMiddleware()
+		r.mux.Handle("POST /api/v1/tournaments/{id}/rounds", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.roundHandler.CreateRound))))
+		r.mux.Handle("PATCH /api/v1/tournaments/{id}/rounds/{roundNum}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.roundHandler.UpdateRound))))
+		r.mux.Handle("PATCH /api/v1/tournaments/{id}/rounds/{roundNum}/status", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.roundHandler.UpdateRoundStatus))))
+		r.mux.Handle("DELETE /api/v1/tournaments/{id}/rounds/{roundNum}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.roundHandler.DeleteRound))))
 	}
 }
 
