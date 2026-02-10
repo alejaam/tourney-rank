@@ -148,6 +148,31 @@ func (t *Team) MemberCount() int {
 	return len(t.MemberIDs)
 }
 
+// ValidatePlayersForMatch validates that all provided players are members of this team
+// and that the count matches the team member count.
+func (t *Team) ValidatePlayersForMatch(playerIDs []uuid.UUID) error {
+	if len(playerIDs) != len(t.MemberIDs) {
+		return ErrTeamFull // Reusing for team size mismatch
+	}
+
+	// Check each provided player is in the team
+	for _, playerID := range playerIDs {
+		if !t.HasMember(playerID) {
+			return ErrPlayerNotInTeam
+		}
+	}
+
+	return nil
+}
+
+// ValidateCaptainPermission checks if the given user ID is the team captain.
+func (t *Team) ValidateCaptainPermission(userID uuid.UUID) error {
+	if !t.IsCaptain(userID) {
+		return ErrNotCaptain
+	}
+	return nil
+}
+
 func generateInviteCode() string {
 	return uuid.New().String()[:8]
 }

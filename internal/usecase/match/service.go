@@ -132,13 +132,14 @@ func (s *Service) SubmitMatch(ctx context.Context, req SubmitMatchRequest, capta
 		return nil, fmt.Errorf("get team: %w", err)
 	}
 
-	// Verify captain is the team captain
-	if team.CaptainID != captainID {
-		return nil, matchdomain.ErrNotCaptain
+	// Verify captain has permission (delegated to domain)
+	if err := team.ValidateCaptainPermission(captainID); err != nil {
+		return nil, err
 	}
 
 	// Convert player stats
 	playerStats := make([]matchdomain.PlayerMatchStats, len(req.PlayerStats))
+	playerIDs := make([]uuid.UUID, len(req.PlayerStats))
 	for i, ps := range req.PlayerStats {
 		playerStats[i] = matchdomain.PlayerMatchStats{
 			PlayerID:    ps.PlayerID,
@@ -149,23 +150,12 @@ func (s *Service) SubmitMatch(ctx context.Context, req SubmitMatchRequest, capta
 			Downs:       ps.Downs,
 			CustomStats: ps.CustomStats,
 		}
-
-		// Verify player is in team
-		found := false
-		for _, memberID := range team.MemberIDs {
-			if memberID == ps.PlayerID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return nil, matchdomain.ErrPlayerNotInTeam
-		}
+		playerIDs[i] = ps.PlayerID
 	}
 
-	// Verify all team members have stats (if team size is defined)
-	if len(playerStats) != len(team.MemberIDs) {
-		return nil, matchdomain.ErrTeamSizeMismatch
+	// Validate all players are in team with correct count (delegated to domain)
+	if err := team.ValidatePlayersForMatch(playerIDs); err != nil {
+		return nil, err
 	}
 
 	// Create match entity

@@ -8,21 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/alejaam/tourney-rank/internal/config"
+	"github.com/alejaam/tourney-rank/internal/infra"
 	httpserver "github.com/alejaam/tourney-rank/internal/infra/http"
-	"github.com/alejaam/tourney-rank/internal/infra/http/handlers"
-	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
-	"github.com/alejaam/tourney-rank/internal/usecase/admin"
-	"github.com/alejaam/tourney-rank/internal/usecase/auth"
-	bracketusecase "github.com/alejaam/tourney-rank/internal/usecase/bracket"
-	leaderboardusecase "github.com/alejaam/tourney-rank/internal/usecase/leaderboard"
-	matchusecase "github.com/alejaam/tourney-rank/internal/usecase/match"
-	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
-	teamusecase "github.com/alejaam/tourney-rank/internal/usecase/team"
-	tournamentusecase "github.com/alejaam/tourney-rank/internal/usecase/tournament"
-	userusecase "github.com/alejaam/tourney-rank/internal/usecase/user"
 )
 
 // Version is set at build time via -ldflags.
@@ -67,102 +56,28 @@ func run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Initialize MongoDB connection
-	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
-		URI:          cfg.MongoDBURI,
-		DatabaseName: cfg.MongoDBDatabase,
-	}, logger)
+	// Initialize dependency container
+	container, err := infra.NewContainer(ctx, cfg, logger)
 	if err != nil {
-		return fmt.Errorf("connect to mongodb: %w", err)
+		return fmt.Errorf("initialize container: %w", err)
 	}
-	defer mongoClient.Close(ctx)
+	defer container.Close(ctx)
 
-	// Initialize repositories
-	gameRepo := mongodb.NewGameRepository(mongoClient)
-	playerRepo := mongodb.NewPlayerRepository(mongoClient)
-	playerStatsRepo := mongodb.NewPlayerStatsRepository(mongoClient)
-	userRepo := mongodb.NewUserRepository(mongoClient)
-	tournamentRepo := mongodb.NewTournamentRepository(mongoClient.Database())
-	teamRepo := mongodb.NewTeamRepository(mongoClient.Database())
-	matchRepo := mongodb.NewMatchRepository(mongoClient.Database())
-	bracketRepo := mongodb.NewBracketRepository(mongoClient.Database())
-
-	// Ensure database indexes
-	if err := gameRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure game indexes", "error", err)
-	}
-	if err := playerRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure player indexes", "error", err)
-	}
-	if err := userRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure user indexes", "error", err)
-	}
-	if err := playerStatsRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure player stats indexes", "error", err)
-	}
-	if err := tournamentRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure tournament indexes", "error", err)
-	}
-	if err := teamRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure team indexes", "error", err)
-	}
-	if err := matchRepo.EnsureIndexes(ctx); err != nil {
-		logger.Warn("failed to ensure match indexes", "error", err)
-	}
-
-	// Initialize services
-	authService := auth.NewService(userRepo, cfg.JWTSecret, 24*time.Hour)
-	userService := userusecase.NewService(userRepo)
-	playerService := playerusecase.NewService(playerRepo)
-	leaderboardService := leaderboardusecase.NewService(playerStatsRepo, gameRepo)
-	tournamentService := tournamentusecase.NewService(tournamentRepo, teamRepo, gameRepo)
-	teamService := teamusecase.NewService(teamRepo, tournamentRepo, playerRepo)
-	matchService := matchusecase.NewService(matchRepo, teamRepo, tournamentRepo, playerRepo, playerStatsRepo, playerService, nil)
-	bracketService := bracketusecase.NewService(bracketRepo, teamRepo, tournamentRepo)
-
-	// Initialize admin services
-	adminUserService := admin.NewUserService(userRepo)
-	adminGameService := admin.NewGameService(gameRepo)
-	adminPlayerService := admin.NewPlayerService(playerRepo)
-
-	// Initialize HTTP handlers
-	gameHandler := handlers.NewGameHandler(gameRepo, logger)
-	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService, logger)
-	authHandler := handlers.NewAuthHandler(authService, userService, logger)
-	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
-	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
-	tournamentHandler := handlers.NewTournamentHandler(tournamentService, playerService, logger)
-	teamHandler := handlers.NewTeamHandler(teamService, playerService, logger)
-	matchHandler := handlers.NewMatchHandler(logger, matchService, playerService)
-	bracketHandler := handlers.NewBracketHandler(bracketService, logger)
-
-	// TODO: Initialize Redis cache when needed
-	// cache, err := redis.Connect(ctx, cfg.RedisURL)
-	// if err != nil {
-	//     return fmt.Errorf("connect to redis: %w", err)
-	// }
-	// defer cache.Close()
-
-	// Setup HTTP router with options
+	// Setup HTTP router with dependency injection
 	routerOpts := []httpserver.RouterOption{
-		httpserver.WithAuthHandler(authHandler),
-		httpserver.WithAdminHandler(adminHandler),
-		httpserver.WithPlayerHandler(playerHandler),
+		httpserver.WithAuthHandler(container.AuthHandler),
+		httpserver.WithAdminHandler(container.AdminHandler),
+		httpserver.WithPlayerHandler(container.PlayerHandler),
 		httpserver.WithJWTSecret(cfg.JWTSecret),
 		httpserver.WithVersion(Version),
-		httpserver.WithMongoDBChecker(mongoClient.Ping),
-		httpserver.WithGameHandler(gameHandler),
-		httpserver.WithLeaderboardHandler(leaderboardHandler),
-		httpserver.WithTournamentHandler(tournamentHandler),
-		httpserver.WithTeamHandler(teamHandler),
-		httpserver.WithMatchHandler(matchHandler),
-		httpserver.WithBracketHandler(bracketHandler),
+		httpserver.WithMongoDBChecker(container.MongoClient.Ping),
+		httpserver.WithGameHandler(container.GameHandler),
+		httpserver.WithLeaderboardHandler(container.LeaderboardHandler),
+		httpserver.WithTournamentHandler(container.TournamentHandler),
+		httpserver.WithTeamHandler(container.TeamHandler),
+		httpserver.WithMatchHandler(container.MatchHandler),
+		httpserver.WithBracketHandler(container.BracketHandler),
 	}
-
-	// Add health checkers if dependencies are configured
-	// if cache != nil {
-	//     routerOpts = append(routerOpts, httpserver.WithRedisChecker(cache.Ping))
-	// }
 
 	router := httpserver.NewRouter(logger, routerOpts...)
 

@@ -23,6 +23,9 @@ var (
 
 	// ErrInvalidRankingWeights is returned when ranking weights don't sum to 1.0.
 	ErrInvalidRankingWeights = errors.New("ranking weights must sum to 1.0")
+
+	// ErrAlreadyExists is returned when trying to create a game with a slug that already exists.
+	ErrAlreadyExists = errors.New("game with this slug already exists")
 )
 
 // Game represents a competitive game supported by the platform.

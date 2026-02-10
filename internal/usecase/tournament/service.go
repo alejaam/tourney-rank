@@ -29,15 +29,17 @@ func NewService(tournamentRepo tournament.Repository, teamRepo team.Repository, 
 
 // CreateTournamentRequest represents the request to create a tournament.
 type CreateTournamentRequest struct {
-	GameID      uuid.UUID           `json:"game_id"`
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	TeamSize    tournament.TeamSize `json:"team_size"`
-	StartDate   time.Time           `json:"start_date"`
-	EndDate     time.Time           `json:"end_date"`
-	PrizePool   string              `json:"prize_pool,omitempty"`
-	BannerURL   string              `json:"banner_url,omitempty"`
-	Rules       tournament.Rules    `json:"rules"`
+	GameID        uuid.UUID                `json:"game_id"`
+	Name          string                   `json:"name"`
+	Description   string                   `json:"description"`
+	Format        tournament.Format        `json:"format"`
+	ScoringSchema tournament.ScoringSchema `json:"scoring_schema"`
+	StartDate     time.Time                `json:"start_date"`
+	EndDate       time.Time                `json:"end_date"`
+	TotalRounds   int                      `json:"total_rounds"`
+	PrizePool     string                   `json:"prize_pool,omitempty"`
+	BannerURL     string                   `json:"banner_url,omitempty"`
+	Rules         tournament.Rules         `json:"rules"`
 }
 
 // UpdateTournamentRequest represents the request to update a tournament.
@@ -110,15 +112,31 @@ func (s *Service) CreateTournament(ctx context.Context, req CreateTournamentRequ
 		return nil, err
 	}
 
-	t, err := tournament.NewTournament(req.GameID, createdBy, req.Name, req.TeamSize, req.StartDate, req.EndDate)
+	t, err := tournament.NewTournament(
+		req.GameID,
+		createdBy,
+		req.Name,
+		req.Format,
+		req.ScoringSchema,
+		req.StartDate,
+		req.EndDate,
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set optional fields
 	t.Description = req.Description
 	t.PrizePool = req.PrizePool
 	t.BannerURL = req.BannerURL
 	t.Rules = req.Rules
+
+	// Set total rounds if specified
+	if req.TotalRounds > 0 {
+		if err := t.SetTotalRounds(req.TotalRounds); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := s.tournamentRepo.Create(ctx, t); err != nil {
 		return nil, err

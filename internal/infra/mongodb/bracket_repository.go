@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // BracketRepository implements bracket.Repository using MongoDB.
@@ -156,5 +157,29 @@ func (r *BracketRepository) DeleteMatchup(ctx context.Context, id uuid.UUID) err
 	if result.DeletedCount == 0 {
 		return bracket.ErrMatchupNotFound
 	}
+	return nil
+}
+
+// EnsureIndexes creates necessary database indexes.
+func (r *BracketRepository) EnsureIndexes(ctx context.Context) error {
+	indexModels := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "tournament_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "bracket_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "round", Value: 1}},
+		},
+	}
+
+	opts := options.CreateIndexes().SetMaxTime(0)
+
+	// Create indexes for matchups collection
+	if _, err := r.matchups.Indexes().CreateMany(ctx, indexModels, opts); err != nil {
+		return err
+	}
+
 	return nil
 }

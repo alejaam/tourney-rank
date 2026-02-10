@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alejaam/tourney-rank/internal/domain/game"
 	playerdomain "github.com/alejaam/tourney-rank/internal/domain/player"
 	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
-	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
 	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
 	"github.com/google/uuid"
 )
@@ -17,16 +17,16 @@ import (
 // PlayerHandler handles HTTP requests for player operations.
 type PlayerHandler struct {
 	service   *playerusecase.Service
-	statsRepo *mongodb.PlayerStatsRepository
-	gameRepo  *mongodb.GameRepository
+	statsRepo playerdomain.StatsRepository
+	gameRepo  game.Repository
 	logger    *slog.Logger
 }
 
 // NewPlayerHandler creates a new PlayerHandler.
 func NewPlayerHandler(
 	service *playerusecase.Service,
-	statsRepo *mongodb.PlayerStatsRepository,
-	gameRepo *mongodb.GameRepository,
+	statsRepo playerdomain.StatsRepository,
+	gameRepo game.Repository,
 	logger *slog.Logger,
 ) *PlayerHandler {
 	return &PlayerHandler{

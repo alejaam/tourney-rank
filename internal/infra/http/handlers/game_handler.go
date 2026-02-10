@@ -11,17 +11,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/alejaam/tourney-rank/internal/domain/game"
-	"github.com/alejaam/tourney-rank/internal/infra/mongodb"
 )
 
 // GameHandler handles HTTP requests for game resources.
 type GameHandler struct {
-	repo   *mongodb.GameRepository
+	repo   game.Repository
 	logger *slog.Logger
 }
 
 // NewGameHandler creates a new GameHandler.
-func NewGameHandler(repo *mongodb.GameRepository, logger *slog.Logger) *GameHandler {
+func NewGameHandler(repo game.Repository, logger *slog.Logger) *GameHandler {
 	return &GameHandler{
 		repo:   repo,
 		logger: logger,
@@ -172,7 +171,7 @@ func (h *GameHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Save to database
 	if err := h.repo.Create(ctx, g); err != nil {
-		if errors.Is(err, mongodb.ErrGameAlreadyExists) {
+		if errors.Is(err, game.ErrAlreadyExists) {
 			h.errorResponse(w, http.StatusConflict, "game with this slug already exists")
 			return
 		}

@@ -2,30 +2,35 @@
 package tournament
 
 import (
-"errors"
-"time"
+	"errors"
+	"time"
 
-"github.com/google/uuid"
+	"github.com/google/uuid"
 )
 
 var (
-ErrNotFound = errors.New("tournament not found")
-ErrInvalidName = errors.New("tournament name cannot be empty")
-ErrInvalidTeamSize = errors.New("invalid team size")
-ErrInvalidStatus = errors.New("invalid tournament status")
-ErrInvalidDates = errors.New("start date must be before end date")
-ErrTournamentNotActive = errors.New("tournament is not active")
-ErrRegistrationClosed = errors.New("tournament registration is closed")
+	ErrNotFound              = errors.New("tournament not found")
+	ErrInvalidName           = errors.New("tournament name cannot be empty")
+	ErrInvalidTeamSize       = errors.New("invalid team size")
+	ErrInvalidStatus         = errors.New("invalid tournament status")
+	ErrInvalidDates          = errors.New("start date must be before end date")
+	ErrTournamentNotActive   = errors.New("tournament is not active")
+	ErrRegistrationClosed    = errors.New("tournament registration is closed")
+	ErrInvalidFormat         = errors.New("invalid tournament format")
+	ErrInvalidScoringSchema  = errors.New("invalid scoring schema")
+	ErrInvalidRound          = errors.New("invalid round number")
+	ErrCannotRetrocedeSatus  = errors.New("cannot move tournament to a previous status")
+	ErrMissingRequiredFields = errors.New("missing required tournament fields")
 )
 
 type Status string
 
 const (
-StatusDraft Status = "draft"
-StatusOpen Status = "open"
-StatusActive Status = "active"
-StatusFinished Status = "finished"
-StatusCanceled Status = "canceled"
+	StatusDraft    Status = "draft"
+	StatusOpen     Status = "open"
+	StatusActive   Status = "active"
+	StatusFinished Status = "finished"
+	StatusCanceled Status = "canceled"
 )
 
 func ValidStatuses() []Status {
@@ -41,13 +46,52 @@ func (s Status) IsValid() bool {
 	return false
 }
 
+// Format describes the tournament format and match type.
+type Format string
+
+const (
+	FormatDuos   Format = "duos"
+	FormatTrios  Format = "trios"
+	FormatQuads  Format = "quads"
+	FormatCustom Format = "custom"
+)
+
+func ValidFormats() []Format {
+	return []Format{FormatDuos, FormatTrios, FormatQuads, FormatCustom}
+}
+
+func (f Format) IsValid() bool {
+	for _, valid := range ValidFormats() {
+		if f == valid {
+			return true
+		}
+	}
+	return false
+}
+
+// ScoringType enumeration for scoring methods.
+type ScoringType string
+
+const (
+	ScoringTypeMatchpoint ScoringType = "matchpoint"
+	ScoringTypeKillpoint  ScoringType = "killpoint"
+	ScoringTypeBestOfN    ScoringType = "best_of_n"
+)
+
+// ScoringSchema defines how matches are scored.
+type ScoringSchema struct {
+	Type    ScoringType            `bson:"type" json:"type"`
+	Weights map[string]float64     `bson:"weights" json:"weights"`
+	Config  map[string]interface{} `bson:"config,omitempty" json:"config,omitempty"`
+}
+
 type TeamSize int
 
 const (
-TeamSizeSolo TeamSize = 1
-TeamSizeDuos TeamSize = 2
-TeamSizeTrios TeamSize = 3
-TeamSizeQuads TeamSize = 4
+	TeamSizeSolo  TeamSize = 1
+	TeamSizeDuos  TeamSize = 2
+	TeamSizeTrios TeamSize = 3
+	TeamSizeQuads TeamSize = 4
 )
 
 func ValidTeamSizes() []TeamSize {
@@ -79,58 +123,76 @@ func (ts TeamSize) String() string {
 }
 
 type Rules struct {
-	MaxTeams int `bson:"max_teams" json:"max_teams"`
-	MinMatches int `bson:"min_matches" json:"min_matches"`
-	MaxMatches int `bson:"max_matches" json:"max_matches"`
-	RequireVerification bool `bson:"require_verification" json:"require_verification"`
-	AllowLateRegistration bool `bson:"allow_late_registration" json:"allow_late_registration"`
-	RegistrationDeadline *time.Time `bson:"registration_deadline,omitempty" json:"registration_deadline,omitempty"`
+	MaxTeams              int        `bson:"max_teams" json:"max_teams"`
+	MinMatches            int        `bson:"min_matches" json:"min_matches"`
+	MaxMatches            int        `bson:"max_matches" json:"max_matches"`
+	RequireVerification   bool       `bson:"require_verification" json:"require_verification"`
+	AllowLateRegistration bool       `bson:"allow_late_registration" json:"allow_late_registration"`
+	RegistrationDeadline  *time.Time `bson:"registration_deadline,omitempty" json:"registration_deadline,omitempty"`
 }
 
 type Tournament struct {
-	ID uuid.UUID `bson:"_id" json:"id"`
-	GameID uuid.UUID `bson:"game_id" json:"game_id"`
-	Name string `bson:"name" json:"name"`
-	Description string `bson:"description,omitempty" json:"description,omitempty"`
-	TeamSize TeamSize `bson:"team_size" json:"team_size"`
-	Status Status `bson:"status" json:"status"`
-	Rules Rules `bson:"rules" json:"rules"`
-	StartDate time.Time `bson:"start_date" json:"start_date"`
-	EndDate time.Time `bson:"end_date" json:"end_date"`
-	PrizePool string `bson:"prize_pool,omitempty" json:"prize_pool,omitempty"`
-	BannerURL string `bson:"banner_url,omitempty" json:"banner_url,omitempty"`
-	CreatedBy uuid.UUID `bson:"created_by" json:"created_by"`
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
+	ID            uuid.UUID     `bson:"_id" json:"id"`
+	GameID        uuid.UUID     `bson:"game_id" json:"game_id"`
+	Name          string        `bson:"name" json:"name"`
+	Description   string        `bson:"description,omitempty" json:"description,omitempty"`
+	TeamSize      TeamSize      `bson:"team_size" json:"team_size"`
+	Format        Format        `bson:"format" json:"format"`
+	ScoringSchema ScoringSchema `bson:"scoring_schema" json:"scoring_schema"`
+	Status        Status        `bson:"status" json:"status"`
+	CurrentRound  int           `bson:"current_round" json:"current_round"`
+	TotalRounds   int           `bson:"total_rounds" json:"total_rounds"`
+	Rules         Rules         `bson:"rules" json:"rules"`
+	StartDate     time.Time     `bson:"start_date" json:"start_date"`
+	EndDate       time.Time     `bson:"end_date" json:"end_date"`
+	PrizePool     string        `bson:"prize_pool,omitempty" json:"prize_pool,omitempty"`
+	BannerURL     string        `bson:"banner_url,omitempty" json:"banner_url,omitempty"`
+	CreatedBy     uuid.UUID     `bson:"created_by" json:"created_by"`
+	CreatedAt     time.Time     `bson:"created_at" json:"created_at"`
+	UpdatedAt     time.Time     `bson:"updated_at" json:"updated_at"`
 }
 
-func NewTournament(gameID, createdBy uuid.UUID, name string, teamSize TeamSize, startDate, endDate time.Time) (*Tournament, error) {
+func NewTournament(
+	gameID, createdBy uuid.UUID,
+	name string,
+	format Format,
+	scoringSchema ScoringSchema,
+	startDate, endDate time.Time,
+) (*Tournament, error) {
+	// Validate required fields
 	if name == "" {
 		return nil, ErrInvalidName
 	}
-	if !teamSize.IsValid() {
-		return nil, ErrInvalidTeamSize
+	if !format.IsValid() {
+		return nil, ErrInvalidFormat
+	}
+	if scoringSchema.Type == "" {
+		return nil, ErrInvalidScoringSchema
 	}
 	if !startDate.Before(endDate) {
 		return nil, ErrInvalidDates
 	}
+
 	now := time.Now().UTC()
 	return &Tournament{
-		ID: uuid.New(),
-		GameID: gameID,
-		Name: name,
-		TeamSize: teamSize,
-		Status: StatusDraft,
-		StartDate: startDate,
-		EndDate: endDate,
-		CreatedBy: createdBy,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:            uuid.New(),
+		GameID:        gameID,
+		Name:          name,
+		Format:        format,
+		ScoringSchema: scoringSchema,
+		Status:        StatusDraft,
+		CurrentRound:  1,
+		TotalRounds:   1,
+		StartDate:     startDate,
+		EndDate:       endDate,
+		CreatedBy:     createdBy,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 		Rules: Rules{
-			MaxTeams: 0,
-			MinMatches: 1,
-			MaxMatches: 0,
-			RequireVerification: false,
+			MaxTeams:              0,
+			MinMatches:            1,
+			MaxMatches:            0,
+			RequireVerification:   false,
 			AllowLateRegistration: true,
 		},
 	}, nil
@@ -154,9 +216,33 @@ func (t *Tournament) UpdateStatus(newStatus Status) error {
 			return ErrInvalidStatus
 		}
 	case StatusFinished, StatusCanceled:
-		return ErrInvalidStatus
+		return ErrCannotRetrocedeSatus
 	}
 	t.Status = newStatus
+	t.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+// AdvanceToNextRound moves the tournament to the next round.
+func (t *Tournament) AdvanceToNextRound() error {
+	if t.CurrentRound >= t.TotalRounds {
+		// Last round: automatically finish tournament
+		return t.UpdateStatus(StatusFinished)
+	}
+	t.CurrentRound++
+	t.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+// SetTotalRounds sets the total number of rounds (must be called before first round starts).
+func (t *Tournament) SetTotalRounds(total int) error {
+	if total < 1 {
+		return ErrInvalidRound
+	}
+	if t.CurrentRound > 1 {
+		return errors.New("cannot change total rounds after tournament has started")
+	}
+	t.TotalRounds = total
 	t.UpdatedAt = time.Now().UTC()
 	return nil
 }
