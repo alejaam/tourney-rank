@@ -131,9 +131,9 @@ func run() error {
 	authHandler := handlers.NewAuthHandler(authService, userService, logger)
 	adminHandler := handlers.NewAdminHandler(adminUserService, adminGameService, adminPlayerService, logger)
 	playerHandler := handlers.NewPlayerHandler(playerService, playerStatsRepo, gameRepo, logger)
-	tournamentHandler := handlers.NewTournamentHandler(tournamentService, logger)
-	teamHandler := handlers.NewTeamHandler(teamService, logger)
-	matchHandler := handlers.NewMatchHandler(logger, matchService)
+	tournamentHandler := handlers.NewTournamentHandler(tournamentService, playerService, logger)
+	teamHandler := handlers.NewTeamHandler(teamService, playerService, logger)
+	matchHandler := handlers.NewMatchHandler(logger, matchService, playerService)
 	bracketHandler := handlers.NewBracketHandler(bracketService, logger)
 
 	// TODO: Initialize Redis cache when needed

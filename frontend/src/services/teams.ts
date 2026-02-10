@@ -33,7 +33,7 @@ export const teamApi = {
    * Get team by ID with member details
    */
   getTeamWithMembers: async (teamId: string): Promise<TeamWithMembers> => {
-    const response = await api.get<TeamWithMembers>(`/teams/${teamId}`);
+    const response = await api.get<TeamWithMembers>(`/teams/${teamId}/members`);
     return response.data;
   },
 
@@ -41,10 +41,10 @@ export const teamApi = {
    * Get all teams for a tournament
    */
   getTournamentTeams: async (tournamentId: string): Promise<Team[]> => {
-    const response = await api.get<{ teams: Team[] }>(
+    const response = await api.get<Team[]>(
       `/tournaments/${tournamentId}/teams`,
     );
-    return response.data.teams;
+    return response.data;
   },
 
   /**

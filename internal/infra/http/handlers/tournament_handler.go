@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -9,22 +10,44 @@ import (
 
 	tournamentdomain "github.com/alejaam/tourney-rank/internal/domain/tournament"
 	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
+	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
 	tournamentusecase "github.com/alejaam/tourney-rank/internal/usecase/tournament"
 	"github.com/google/uuid"
 )
 
 // TournamentHandler handles HTTP requests for tournament operations.
 type TournamentHandler struct {
-	service *tournamentusecase.Service
-	logger  *slog.Logger
+	service       *tournamentusecase.Service
+	playerService *playerusecase.Service
+	logger        *slog.Logger
 }
 
 // NewTournamentHandler creates a new tournament handler.
-func NewTournamentHandler(service *tournamentusecase.Service, logger *slog.Logger) *TournamentHandler {
+func NewTournamentHandler(service *tournamentusecase.Service, playerService *playerusecase.Service, logger *slog.Logger) *TournamentHandler {
 	return &TournamentHandler{
-		service: service,
-		logger:  logger,
+		service:       service,
+		playerService: playerService,
+		logger:        logger,
 	}
+}
+
+func (h *TournamentHandler) getAuthenticatedPlayerID(ctx context.Context) (uuid.UUID, error) {
+	userInfo, ok := middleware.GetUserInfo(ctx)
+	if !ok {
+		return uuid.Nil, errors.New("unauthorized")
+	}
+
+	userID, err := uuid.Parse(userInfo.ID)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid user id")
+	}
+
+	p, err := h.playerService.GetOrCreateByUserID(ctx, userID, "Player")
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return p.ID, nil
 }
 
 // CreateTournament handles POST /api/v1/tournaments
@@ -228,16 +251,13 @@ func (h *TournamentHandler) GetActiveTournaments(w http.ResponseWriter, r *http.
 
 // GetPlayerActiveTournament handles GET /api/v1/players/me/active-tournament
 func (h *TournamentHandler) GetPlayerActiveTournament(w http.ResponseWriter, r *http.Request) {
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

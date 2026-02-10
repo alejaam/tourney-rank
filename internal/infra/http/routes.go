@@ -374,6 +374,12 @@ func (r *Router) setupAdminRoutes() {
 	r.mux.Handle("PATCH /api/v1/admin/players/{id}/unban", mw(http.HandlerFunc(r.adminHandler.UnbanPlayer)))
 	r.mux.Handle("PUT /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.UpdatePlayer)))
 	r.mux.Handle("DELETE /api/v1/admin/players/{id}", mw(http.HandlerFunc(r.adminHandler.DeletePlayer)))
+
+	// Match moderation
+	if r.matchHandler != nil {
+		r.mux.Handle("GET /api/v1/admin/matches/unverified", mw(http.HandlerFunc(r.matchHandler.HandleGetUnverifiedMatches)))
+		r.mux.Handle("PATCH /api/v1/admin/matches/{id}/verify", mw(http.HandlerFunc(r.matchHandler.HandleVerifyMatch)))
+	}
 }
 
 // getMiddleware returns a middleware chain that applies auth + admin + logging.

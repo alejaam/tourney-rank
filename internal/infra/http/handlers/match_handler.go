@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,20 +14,42 @@ import (
 	"github.com/alejaam/tourney-rank/internal/domain/match"
 	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
 	usecasematch "github.com/alejaam/tourney-rank/internal/usecase/match"
+	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
 )
 
 // MatchHandler handles HTTP requests for match resources.
 type MatchHandler struct {
-	logger  *slog.Logger
-	service *usecasematch.Service
+	logger        *slog.Logger
+	service       *usecasematch.Service
+	playerService *playerusecase.Service
 }
 
 // NewMatchHandler creates a new MatchHandler.
-func NewMatchHandler(logger *slog.Logger, service *usecasematch.Service) *MatchHandler {
+func NewMatchHandler(logger *slog.Logger, service *usecasematch.Service, playerService *playerusecase.Service) *MatchHandler {
 	return &MatchHandler{
-		logger:  logger,
-		service: service,
+		logger:        logger,
+		service:       service,
+		playerService: playerService,
 	}
+}
+
+func (h *MatchHandler) getAuthenticatedPlayerID(ctx context.Context) (uuid.UUID, error) {
+	userInfo, ok := middleware.GetUserInfo(ctx)
+	if !ok {
+		return uuid.Nil, errors.New("unauthorized")
+	}
+
+	userID, err := uuid.Parse(userInfo.ID)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid user id")
+	}
+
+	p, err := h.playerService.GetOrCreateByUserID(ctx, userID, "Player")
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return p.ID, nil
 }
 
 // HandleSubmitMatch handles POST /api/v1/matches
@@ -34,15 +57,13 @@ func NewMatchHandler(logger *slog.Logger, service *usecasematch.Service) *MatchH
 func (h *MatchHandler) HandleSubmitMatch(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userInfo, ok := middleware.GetUserInfo(ctx)
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "authentication required")
-		return
-	}
-
-	captainID, err := uuid.Parse(userInfo.ID)
+	captainID, err := h.getAuthenticatedPlayerID(ctx)
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "invalid user id")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -68,6 +89,10 @@ func (h *MatchHandler) HandleGetTournamentMatches(w http.ResponseWriter, r *http
 	ctx := r.Context()
 
 	tournamentIDStr := r.PathValue("tournament_id")
+	if tournamentIDStr == "" {
+		// Route currently uses {id}
+		tournamentIDStr = r.PathValue("id")
+	}
 	if tournamentIDStr == "" {
 		h.errorResponse(w, http.StatusBadRequest, "tournament_id is required")
 		return
@@ -100,15 +125,13 @@ func (h *MatchHandler) HandleGetTournamentMatches(w http.ResponseWriter, r *http
 func (h *MatchHandler) HandleGetPlayerMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userInfo, ok := middleware.GetUserInfo(ctx)
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "authentication required")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(ctx)
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "invalid user id")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

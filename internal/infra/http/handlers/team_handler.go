@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -8,22 +9,44 @@ import (
 
 	teamdomain "github.com/alejaam/tourney-rank/internal/domain/team"
 	"github.com/alejaam/tourney-rank/internal/infra/http/middleware"
+	playerusecase "github.com/alejaam/tourney-rank/internal/usecase/player"
 	teamusecase "github.com/alejaam/tourney-rank/internal/usecase/team"
 	"github.com/google/uuid"
 )
 
 // TeamHandler handles HTTP requests for team operations.
 type TeamHandler struct {
-	service *teamusecase.Service
-	logger  *slog.Logger
+	service       *teamusecase.Service
+	playerService *playerusecase.Service
+	logger        *slog.Logger
 }
 
 // NewTeamHandler creates a new team handler.
-func NewTeamHandler(service *teamusecase.Service, logger *slog.Logger) *TeamHandler {
+func NewTeamHandler(service *teamusecase.Service, playerService *playerusecase.Service, logger *slog.Logger) *TeamHandler {
 	return &TeamHandler{
-		service: service,
-		logger:  logger,
+		service:       service,
+		playerService: playerService,
+		logger:        logger,
 	}
+}
+
+func (h *TeamHandler) getAuthenticatedPlayerID(ctx context.Context) (uuid.UUID, error) {
+	userInfo, ok := middleware.GetUserInfo(ctx)
+	if !ok {
+		return uuid.Nil, errors.New("unauthorized")
+	}
+
+	userID, err := uuid.Parse(userInfo.ID)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid user id")
+	}
+
+	p, err := h.playerService.GetOrCreateByUserID(ctx, userID, "Player")
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return p.ID, nil
 }
 
 // CreateTeam handles POST /api/v1/teams
@@ -35,16 +58,13 @@ func (h *TeamHandler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -128,16 +148,13 @@ func (h *TeamHandler) JoinTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -178,16 +195,13 @@ func (h *TeamHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	requesterID, err := uuid.Parse(userInfo.ID)
+	requesterID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -222,16 +236,13 @@ func (h *TeamHandler) LeaveTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -264,16 +275,13 @@ func (h *TeamHandler) TransferCaptaincy(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	currentCaptainID, err := uuid.Parse(userInfo.ID)
+	currentCaptainID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -323,16 +331,13 @@ func (h *TeamHandler) GetPlayerTeamInTournament(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -352,16 +357,13 @@ func (h *TeamHandler) GetPlayerTeamInTournament(w http.ResponseWriter, r *http.R
 
 // GetPlayerTeams handles GET /api/v1/players/me/teams
 func (h *TeamHandler) GetPlayerTeams(w http.ResponseWriter, r *http.Request) {
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -391,16 +393,13 @@ func (h *TeamHandler) UpdateTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get player ID from context (set by auth middleware)
-	userInfo, ok := middleware.GetUserInfo(r.Context())
-	if !ok {
-		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	playerID, err := uuid.Parse(userInfo.ID)
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
-		h.errorResponse(w, http.StatusBadRequest, "Invalid user ID")
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
