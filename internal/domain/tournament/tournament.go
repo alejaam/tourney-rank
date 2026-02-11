@@ -129,6 +129,9 @@ type Rules struct {
 	RequireVerification   bool       `bson:"require_verification" json:"require_verification"`
 	AllowLateRegistration bool       `bson:"allow_late_registration" json:"allow_late_registration"`
 	RegistrationDeadline  *time.Time `bson:"registration_deadline,omitempty" json:"registration_deadline,omitempty"`
+	MinAge                int        `bson:"min_age,omitempty" json:"min_age,omitempty"`
+	MaxAge                int        `bson:"max_age,omitempty" json:"max_age,omitempty"`
+	AllowedRegions        []string   `bson:"allowed_regions,omitempty" json:"allowed_regions,omitempty"`
 }
 
 type Tournament struct {
@@ -147,6 +150,7 @@ type Tournament struct {
 	EndDate       time.Time     `bson:"end_date" json:"end_date"`
 	PrizePool     string        `bson:"prize_pool,omitempty" json:"prize_pool,omitempty"`
 	BannerURL     string        `bson:"banner_url,omitempty" json:"banner_url,omitempty"`
+	LobbyCode     string        `bson:"lobby_code,omitempty" json:"lobby_code,omitempty"`
 	CreatedBy     uuid.UUID     `bson:"created_by" json:"created_by"`
 	CreatedAt     time.Time     `bson:"created_at" json:"created_at"`
 	UpdatedAt     time.Time     `bson:"updated_at" json:"updated_at"`
@@ -283,4 +287,13 @@ func (t *Tournament) SetPrizePool(prizePool string) {
 func (t *Tournament) SetBannerURL(bannerURL string) {
 	t.BannerURL = bannerURL
 	t.UpdatedAt = time.Now().UTC()
+}
+
+func (t *Tournament) SetLobbyCode(code string) error {
+	if code == "" {
+		return errors.New("lobby code cannot be empty")
+	}
+	t.LobbyCode = code
+	t.UpdatedAt = time.Now().UTC()
+	return nil
 }

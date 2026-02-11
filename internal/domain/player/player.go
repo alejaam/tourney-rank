@@ -79,6 +79,7 @@ type Player struct {
 	AvatarURL         string            `bson:"avatar_url,omitempty" json:"avatar_url,omitempty"`
 	Bio               string            `bson:"bio,omitempty" json:"bio,omitempty"`
 	PlatformIDs       map[string]string `bson:"platform_ids,omitempty" json:"platform_ids,omitempty"` // e.g., {"activision_id": "...", "epic_id": "..."}
+	Age               int               `bson:"age,omitempty" json:"age,omitempty"`
 	BirthYear         int               `bson:"birth_year,omitempty" json:"birth_year,omitempty"`
 	Region            string            `bson:"region,omitempty" json:"region,omitempty"`
 	PreferredPlatform string            `bson:"preferred_platform,omitempty" json:"preferred_platform,omitempty"`

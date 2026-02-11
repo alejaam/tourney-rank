@@ -22,7 +22,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
     const user = useAuthStore((state) => state.user);
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-    const [warzoneStats, setWarzoneStats] = useState<PlayerGameStatsDetail | null>(null);
+    const [gameStats, setGameStats] = useState<PlayerGameStatsDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [joinMethod, setJoinMethod] = useState<JoinMethod>(null);
@@ -40,40 +40,41 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!selectedTournament) {
+            setGameStats(null);
+            return;
+        }
+
+        const loadStats = async () => {
+            try {
+                const stats = await playerApi.getMyGameStats(selectedTournament.game_id);
+                setGameStats(stats);
+            } catch (error) {
+                setGameStats(null);
+            }
+        };
+
+        loadStats();
+    }, [selectedTournament]);
+
     const loadData = async () => {
         setLoading(true);
         try {
-            // Load open tournaments for Warzone
-            const response = await tournamentApi.listTournaments({
-                status: "open",
-                limit: 50,
-            });
+            const [openResponse, activeResponse] = await Promise.all([
+                tournamentApi.listTournaments({ status: "open", limit: 50 }),
+                tournamentApi.listTournaments({ status: "active", limit: 50 }),
+            ]);
 
-            // Filter Warzone tournaments only (handle null/undefined tournaments)
-            const allTournaments = response.tournaments || [];
+            const openTournaments = openResponse.tournaments || [];
+            const activeTournaments = activeResponse.tournaments || [];
 
-            console.log("🏆 All open tournaments:", allTournaments.length);
-            console.log("📋 Tournaments data:", allTournaments);
-
-            const warzoneTournaments = allTournaments.filter(
-                (t) => t.game_name?.toLowerCase().includes("warzone") ||
-                    t.name.toLowerCase().includes("warzone")
-            );
-
-            console.log("🎮 Warzone tournaments found:", warzoneTournaments.length);
-            setTournaments(warzoneTournaments);
-
-            // Load player's Warzone stats
-            try {
-                // Try to find Warzone game ID - you may need to adjust this
-                const firstWarzoneTournament = warzoneTournaments[0];
-                if (firstWarzoneTournament) {
-                    const stats = await playerApi.getMyGameStats(firstWarzoneTournament.game_id);
-                    setWarzoneStats(stats);
-                }
-            } catch (error) {
-                console.warn("No Warzone stats found for player");
+            const merged = new Map<string, Tournament>();
+            for (const tournament of [...openTournaments, ...activeTournaments]) {
+                merged.set(tournament.id, tournament);
             }
+
+            setTournaments(Array.from(merged.values()));
         } catch (error: any) {
             console.error("Failed to load tournaments:", error);
             toast.error("Failed to load tournaments");
@@ -85,36 +86,37 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
     const checkEligibility = (tournament: Tournament): { eligible: boolean; reasons: string[] } => {
         const reasons: string[] = [];
 
-        if (!warzoneStats) {
-            reasons.push("No Warzone stats found. Play some matches first!");
-            return { eligible: false, reasons };
-        }
+        const hasStats = Boolean(gameStats);
 
         const rules = tournament.rules;
 
         // Check max K/D
-        if (rules.max_kd !== undefined) {
-            const playerKD = Number(warzoneStats.stats.kd || 0);
+        if (hasStats && rules.max_kd !== undefined) {
+            const playerKD = Number(gameStats.stats.kd || 0);
             if (playerKD > rules.max_kd) {
                 reasons.push(`K/D too high (${playerKD.toFixed(2)} > ${rules.max_kd})`);
             }
         }
 
         // Check min K/D
-        if (rules.min_kd !== undefined) {
-            const playerKD = Number(warzoneStats.stats.kd || 0);
+        if (hasStats && rules.min_kd !== undefined) {
+            const playerKD = Number(gameStats.stats.kd || 0);
             if (playerKD < rules.min_kd) {
                 reasons.push(`K/D too low (${playerKD.toFixed(2)} < ${rules.min_kd})`);
             }
         }
 
         // Check min matches played
-        if (rules.min_matches_played !== undefined) {
-            if (warzoneStats.matches_played < rules.min_matches_played) {
+        if (hasStats && rules.min_matches_played !== undefined) {
+            if (gameStats.matches_played < rules.min_matches_played) {
                 reasons.push(
-                    `Not enough matches played (${warzoneStats.matches_played} < ${rules.min_matches_played})`
+                    `Not enough matches played (${gameStats.matches_played} < ${rules.min_matches_played})`
                 );
             }
+        }
+
+        if (tournament.status !== "open" && !tournament.rules.allow_late_registration) {
+            reasons.push("Registration is closed");
         }
 
         // Check if tournament is full
@@ -191,7 +193,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
             <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-6 flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-white">Join Warzone Tournament</h2>
+                    <h2 className="text-2xl font-bold text-white">Join Tournament</h2>
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-white text-2xl"
@@ -209,7 +211,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
                         <div className="text-center py-12">
                             <div className="text-6xl mb-4">🏆</div>
                             <p className="text-xl text-gray-300 mb-2">
-                                No open Warzone tournaments available
+                                No open tournaments available
                             </p>
                             <p className="text-gray-400 mb-6">
                                 Tournaments must be in "open" status to accept registrations
@@ -247,28 +249,28 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
                             </h3>
 
                             {/* Player Stats Summary */}
-                            {warzoneStats && (
+                            {gameStats && (
                                 <div className="bg-gray-700 rounded-lg p-4 mb-6">
                                     <h4 className="text-sm font-medium text-gray-300 mb-2">
-                                        Your Warzone Stats
+                                        Your Game Stats
                                     </h4>
                                     <div className="grid grid-cols-3 gap-4 text-sm">
                                         <div>
                                             <span className="text-gray-400">K/D Ratio:</span>
                                             <p className="text-white font-bold">
-                                                {Number(warzoneStats.stats.kd || 0).toFixed(2)}
+                                                {Number(gameStats.stats.kd || 0).toFixed(2)}
                                             </p>
                                         </div>
                                         <div>
                                             <span className="text-gray-400">Matches Played:</span>
                                             <p className="text-white font-bold">
-                                                {warzoneStats.matches_played}
+                                                {gameStats.matches_played}
                                             </p>
                                         </div>
                                         <div>
                                             <span className="text-gray-400">Ranking Score:</span>
                                             <p className="text-white font-bold">
-                                                {warzoneStats.ranking_score.toFixed(0)}
+                                                {gameStats.ranking_score.toFixed(0)}
                                             </p>
                                         </div>
                                     </div>

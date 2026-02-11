@@ -55,7 +55,9 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 
 		if errors.Is(err, tournamentdomain.ErrInvalidName) ||
 			errors.Is(err, tournamentdomain.ErrInvalidTeamSize) ||
-			errors.Is(err, tournamentdomain.ErrInvalidDates) {
+			errors.Is(err, tournamentdomain.ErrInvalidDates) ||
+			errors.Is(err, tournamentdomain.ErrInvalidFormat) ||
+			errors.Is(err, tournamentdomain.ErrInvalidScoringSchema) {
 			status = http.StatusBadRequest
 			message = err.Error()
 		}
@@ -192,7 +194,43 @@ func (h *TournamentHandler) UpdateTournamentStatus(w http.ResponseWriter, r *htt
 	h.jsonResponse(w, http.StatusOK, tournament)
 }
 
-// DeleteTournament handles DELETE /api/v1/tournaments/{id}
+// SetTournamentLobbyCode handles PATCH /api/v1/tournaments/{id}/lobby-code
+// Admin endpoint to set the private lobby code for the tournament
+func (h *TournamentHandler) SetTournamentLobbyCode(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid tournament ID")
+		return
+	}
+
+	var req struct {
+		LobbyCode string `json:"lobby_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Failed to decode request", "error", err)
+		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.LobbyCode == "" {
+		h.errorResponse(w, http.StatusBadRequest, "Lobby code cannot be empty")
+		return
+	}
+
+	tournament, err := h.service.SetTournamentLobbyCode(r.Context(), id, req.LobbyCode)
+	if err != nil {
+		if errors.Is(err, tournamentdomain.ErrNotFound) {
+			h.errorResponse(w, http.StatusNotFound, "Tournament not found")
+			return
+		}
+		h.logger.Error("Failed to set lobby code", "error", err)
+		h.errorResponse(w, http.StatusInternalServerError, "Failed to set lobby code")
+		return
+	}
+
+	h.jsonResponse(w, http.StatusOK, tournament)
+}
 func (h *TournamentHandler) DeleteTournament(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := uuid.Parse(idStr)

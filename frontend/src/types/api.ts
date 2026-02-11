@@ -6,6 +6,8 @@ export interface User {
   username: string;
   email: string;
   role: "user" | "admin";
+  age: number;
+  region: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +26,8 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  age: number;
+  region: string;
 }
 
 // Games

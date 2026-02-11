@@ -27,12 +27,14 @@ type User struct {
 	Email        string    `bson:"email" json:"email"`
 	PasswordHash string    `bson:"password_hash" json:"-"`
 	Role         Role      `bson:"role" json:"role"`
+	Age          int       `bson:"age" json:"age"`
+	Region       string    `bson:"region" json:"region"`
 	CreatedAt    time.Time `bson:"created_at" json:"created_at"`
 	UpdatedAt    time.Time `bson:"updated_at" json:"updated_at"`
 }
 
 // NewUser creates a new user with hashed password.
-func NewUser(username, email, password string) (*User, error) {
+func NewUser(username, email, password, region string, age int) (*User, error) {
 	if username == "" {
 		return nil, errors.New("username is required")
 	}
@@ -41,6 +43,12 @@ func NewUser(username, email, password string) (*User, error) {
 	}
 	if len(password) < 8 {
 		return nil, errors.New("password must be at least 8 characters")
+	}
+	if age < 13 {
+		return nil, errors.New("user must be at least 13 years old")
+	}
+	if region == "" {
+		return nil, errors.New("region is required")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -54,6 +62,8 @@ func NewUser(username, email, password string) (*User, error) {
 		Email:        email,
 		PasswordHash: string(hash),
 		Role:         RoleUser,
+		Age:          age,
+		Region:       region,
 		CreatedAt:    time.Now().UTC(),
 		UpdatedAt:    time.Now().UTC(),
 	}, nil

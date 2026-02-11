@@ -159,6 +159,57 @@ func (h *LeaderboardHandler) GetPlayerRank(w http.ResponseWriter, r *http.Reques
 	h.jsonResponse(w, http.StatusOK, rankResp)
 }
 
+// GetTournamentLeaderboard handles GET /api/v1/tournaments/{tournamentId}/leaderboard
+func (h *LeaderboardHandler) GetTournamentLeaderboard(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tournamentIDStr := r.PathValue("tournamentId")
+	if tournamentIDStr == "" {
+		h.errorResponse(w, http.StatusBadRequest, "tournament id is required")
+		return
+	}
+
+	// Parse tournament ID
+	tournamentID, err := uuid.Parse(tournamentIDStr)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "invalid tournament id format")
+		return
+	}
+
+	// Parse pagination
+	limit := parseIntParam(r, "limit", 50)
+	offset := parseIntParam(r, "offset", 0)
+
+	// Clamp limit
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Get tournament leaderboard (cumulative for entire tournament)
+	entries, total, err := h.service.GetTournamentLeaderboard(ctx, tournamentID, int(limit), int(offset))
+	if err != nil {
+		h.logger.Error("failed to get tournament leaderboard", "tournament_id", tournamentIDStr, "error", err)
+		h.errorResponse(w, http.StatusInternalServerError, "failed to get tournament leaderboard")
+		return
+	}
+
+	response := map[string]interface{}{
+		"tournament_id": tournamentIDStr,
+		"entries":       entries,
+		"total":         total,
+		"limit":         limit,
+		"offset":        offset,
+	}
+
+	h.jsonResponse(w, http.StatusOK, response)
+}
+
 // GetTierDistribution handles GET /api/v1/leaderboard/{gameId}/tiers
 func (h *LeaderboardHandler) GetTierDistribution(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

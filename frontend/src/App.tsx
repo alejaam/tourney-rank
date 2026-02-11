@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { MainLayout } from './layouts/MainLayout';
 import { AdminPage, DashboardPage, HomePage, LoginPage, MatchReportPage, PlayerProfilePage, RegisterPage, TournamentAdminPage, TournamentsPage } from './pages';
 
 const queryClient = new QueryClient({
@@ -32,14 +33,16 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected routes */}
+      {/* Protected routes with MainLayout */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/profile" element={<PlayerProfilePage />} />
-        <Route path="/match-report" element={<MatchReportPage />} />
-        <Route path="/tournaments" element={<TournamentsPage />} />
-        <Route path="/tournament-admin" element={<TournamentAdminPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<PlayerProfilePage />} />
+          <Route path="/match-report" element={<MatchReportPage />} />
+          <Route path="/tournaments" element={<TournamentsPage />} />
+          <Route path="/tournament-admin" element={<TournamentAdminPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
       </Route>
     </Routes>
   );

@@ -34,6 +34,8 @@ type RegisterRequest struct {
 	Username string
 	Email    string
 	Password string
+	Age      int
+	Region   string
 }
 
 // LoginRequest represents the data needed to login.
@@ -62,7 +64,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*AuthRespo
 	}
 
 	// Create user
-	u, err := user.NewUser(req.Username, req.Email, req.Password)
+	u, err := user.NewUser(req.Username, req.Email, req.Password, req.Region, req.Age)
 	if err != nil {
 		return nil, err
 	}

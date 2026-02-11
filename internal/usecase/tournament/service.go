@@ -32,6 +32,7 @@ type CreateTournamentRequest struct {
 	GameID        uuid.UUID                `json:"game_id"`
 	Name          string                   `json:"name"`
 	Description   string                   `json:"description"`
+	TeamSize      int                      `json:"team_size"`
 	Format        tournament.Format        `json:"format"`
 	ScoringSchema tournament.ScoringSchema `json:"scoring_schema"`
 	StartDate     time.Time                `json:"start_date"`
@@ -112,6 +113,32 @@ func (s *Service) CreateTournament(ctx context.Context, req CreateTournamentRequ
 		return nil, err
 	}
 
+	// Normalize legacy team_size into format if format is missing
+	if !req.Format.IsValid() && req.TeamSize > 0 {
+		switch req.TeamSize {
+		case 1:
+			req.Format = tournament.FormatCustom
+		case 2:
+			req.Format = tournament.FormatDuos
+		case 3:
+			req.Format = tournament.FormatTrios
+		case 4:
+			req.Format = tournament.FormatQuads
+		default:
+			return nil, tournament.ErrInvalidTeamSize
+		}
+	}
+
+	// Default scoring schema when not provided
+	if req.ScoringSchema.Type == "" {
+		req.ScoringSchema = tournament.ScoringSchema{
+			Type:    tournament.ScoringTypeMatchpoint,
+			Weights: map[string]float64{},
+		}
+	} else if req.ScoringSchema.Weights == nil {
+		req.ScoringSchema.Weights = map[string]float64{}
+	}
+
 	t, err := tournament.NewTournament(
 		req.GameID,
 		createdBy,
@@ -123,6 +150,24 @@ func (s *Service) CreateTournament(ctx context.Context, req CreateTournamentRequ
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set team size for legacy flows or when provided
+	if req.TeamSize > 0 {
+		ts := tournament.TeamSize(req.TeamSize)
+		if !ts.IsValid() {
+			return nil, tournament.ErrInvalidTeamSize
+		}
+		t.TeamSize = ts
+	} else {
+		switch req.Format {
+		case tournament.FormatDuos:
+			t.TeamSize = tournament.TeamSizeDuos
+		case tournament.FormatTrios:
+			t.TeamSize = tournament.TeamSizeTrios
+		case tournament.FormatQuads:
+			t.TeamSize = tournament.TeamSizeQuads
+		}
 	}
 
 	// Set optional fields
@@ -296,6 +341,28 @@ func (s *Service) GetActiveTournamentForPlayer(ctx context.Context, playerID uui
 // DeleteTournament deletes a tournament.
 func (s *Service) DeleteTournament(ctx context.Context, id uuid.UUID) error {
 	return s.tournamentRepo.Delete(ctx, id)
+}
+
+// SetTournamentLobbyCode sets the lobby code for a tournament.
+// This is called by admins to post the private Warzone lobby code.
+func (s *Service) SetTournamentLobbyCode(ctx context.Context, id uuid.UUID, code string) (*tournament.Tournament, error) {
+	// Get tournament
+	t, err := s.tournamentRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the lobby code (validates code is not empty)
+	if err := t.SetLobbyCode(code); err != nil {
+		return nil, err
+	}
+
+	// Save the updated tournament
+	if err := s.tournamentRepo.Update(ctx, t); err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }
 
 // GetTournamentStats retrieves statistics for a tournament.

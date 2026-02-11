@@ -3,6 +3,7 @@ package team
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/alejaam/tourney-rank/internal/domain/player"
@@ -83,6 +84,11 @@ func (s *Service) CreateTeam(ctx context.Context, req CreateTeamRequest, captain
 		return nil, tournament.ErrRegistrationClosed
 	}
 
+	// Validate all preconditions for team creation
+	if err := s.ValidateTeamCreationPreconditions(ctx, captainID, t); err != nil {
+		return nil, err
+	}
+
 	// Verify player exists
 	_, err = s.playerRepo.GetByID(ctx, captainID.String())
 	if err != nil {
@@ -107,11 +113,77 @@ func (s *Service) CreateTeam(ctx context.Context, req CreateTeamRequest, captain
 		tm.SetLogoURL(req.LogoURL)
 	}
 
+	// AUTO-APPROVE: If all preconditions pass, team is ready immediately
+	tm.Status = team.StatusReady
+
 	if err := s.teamRepo.Create(ctx, tm); err != nil {
 		return nil, err
 	}
 
 	return tm, nil
+}
+
+// ValidateTeamCreationPreconditions validates all preconditions for team creation.
+// Returns nil if all preconditions pass.
+func (s *Service) ValidateTeamCreationPreconditions(ctx context.Context, captainID uuid.UUID, t *tournament.Tournament) error {
+	// Get captain's player data to check age and region
+	p, err := s.playerRepo.GetByID(ctx, captainID.String())
+	if err != nil {
+		return fmt.Errorf("captain not found: %w", err)
+	}
+
+	// Check if captain is associated with a user (for age/region info)
+	if p == nil {
+		return fmt.Errorf("captain profile not found")
+	}
+
+	// 1. Check age requirement
+	if t.Rules.MinAge > 0 && p.Age < t.Rules.MinAge {
+		return fmt.Errorf("player too young (minimum age: %d)", t.Rules.MinAge)
+	}
+	if t.Rules.MaxAge > 0 && p.Age > t.Rules.MaxAge {
+		return fmt.Errorf("player too old (maximum age: %d)", t.Rules.MaxAge)
+	}
+
+	// 2. Check region (if tournament restricts regions)
+	if t.Rules.AllowedRegions != nil && len(t.Rules.AllowedRegions) > 0 {
+		allowed := false
+		for _, region := range t.Rules.AllowedRegions {
+			if region == p.Region {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return fmt.Errorf("player region not allowed for this tournament (allowed: %v, player: %s)", t.Rules.AllowedRegions, p.Region)
+		}
+	}
+
+	// 3. Check date overlap (captain not in another tournament at same time)
+	teams, err := s.teamRepo.GetByPlayerID(ctx, captainID)
+	if err == nil && len(teams) > 0 {
+		for _, existingTeam := range teams {
+			existingTournament, err := s.tournamentRepo.GetByID(ctx, existingTeam.TournamentID)
+			if err == nil && existingTournament != nil {
+				// Skip finished or canceled tournaments
+				if existingTournament.Status == tournament.StatusFinished || existingTournament.Status == tournament.StatusCanceled {
+					continue
+				}
+				// Check for date overlap
+				if t.StartDate.Before(existingTournament.EndDate) && t.EndDate.After(existingTournament.StartDate) {
+					return fmt.Errorf("player already registered in tournament with overlapping dates")
+				}
+			}
+		}
+	}
+
+	// 4. Check if tournament has reached max teams
+	allTeams, err := s.teamRepo.GetByTournamentID(ctx, t.ID)
+	if err == nil && t.Rules.MaxTeams > 0 && len(allTeams) >= t.Rules.MaxTeams {
+		return fmt.Errorf("tournament is full")
+	}
+
+	return nil
 }
 
 // GetTeam retrieves a team by ID.

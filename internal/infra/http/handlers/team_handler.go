@@ -93,6 +93,64 @@ func (h *TeamHandler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	h.jsonResponse(w, http.StatusCreated, team)
 }
 
+// CreateTeamForTournament handles POST /api/v1/tournaments/{tournamentId}/teams
+func (h *TeamHandler) CreateTeamForTournament(w http.ResponseWriter, r *http.Request) {
+	tournamentID := r.PathValue("tournamentId")
+	if tournamentID == "" {
+		h.errorResponse(w, http.StatusBadRequest, "Tournament ID is required")
+		return
+	}
+
+	tID, err := uuid.Parse(tournamentID)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid tournament ID")
+		return
+	}
+
+	var req teamusecase.CreateTeamRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Failed to decode request", "error", err)
+		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	req.TournamentID = tID
+
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	team, err := h.service.CreateTeam(r.Context(), req, playerID)
+	if err != nil {
+		h.logger.Error("Failed to create team", "error", err)
+		status := http.StatusInternalServerError
+		message := "Failed to create team"
+
+		if errors.Is(err, teamdomain.ErrInvalidName) {
+			status = http.StatusBadRequest
+			message = err.Error()
+		} else if err.Error() == "tournament not found" || err.Error() == "player not found" {
+			status = http.StatusBadRequest
+			message = err.Error()
+		} else if err.Error() == "tournament is full" ||
+			err.Error() == "player is already in a team for this tournament" {
+			status = http.StatusConflict
+			message = err.Error()
+		}
+
+		h.errorResponse(w, status, message)
+		return
+	}
+
+	h.jsonResponse(w, http.StatusCreated, team)
+}
+
 // GetTeam handles GET /api/v1/teams/{id}
 func (h *TeamHandler) GetTeam(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
@@ -145,6 +203,64 @@ func (h *TeamHandler) JoinTeam(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Failed to decode request", "error", err)
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	playerID, err := h.getAuthenticatedPlayerID(r.Context())
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		h.errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	team, err := h.service.JoinTeam(r.Context(), req, playerID)
+	if err != nil {
+		h.logger.Error("Failed to join team", "error", err, "player_id", playerID)
+		status := http.StatusInternalServerError
+		message := "Failed to join team"
+
+		if errors.Is(err, teamdomain.ErrInvalidInviteCode) || errors.Is(err, teamdomain.ErrNotFound) {
+			status = http.StatusNotFound
+			message = "Invalid invite code"
+		} else if errors.Is(err, teamdomain.ErrPlayerAlreadyInTeam) || errors.Is(err, teamdomain.ErrTeamFull) {
+			status = http.StatusConflict
+			message = err.Error()
+		}
+
+		h.errorResponse(w, status, message)
+		return
+	}
+
+	h.jsonResponse(w, http.StatusOK, team)
+}
+
+// JoinTeamForTournament handles POST /api/v1/tournaments/{tournamentId}/teams/join
+func (h *TeamHandler) JoinTeamForTournament(w http.ResponseWriter, r *http.Request) {
+	tournamentID := r.PathValue("tournamentId")
+	if tournamentID == "" {
+		h.errorResponse(w, http.StatusBadRequest, "Tournament ID is required")
+		return
+	}
+
+	tID, err := uuid.Parse(tournamentID)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid tournament ID")
+		return
+	}
+
+	var req teamusecase.JoinTeamRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Failed to decode request", "error", err)
+		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	teamByCode, err := h.service.GetTeamByInviteCode(r.Context(), req.InviteCode)
+	if err != nil || teamByCode == nil || teamByCode.TournamentID != tID {
+		h.errorResponse(w, http.StatusNotFound, "Invalid invite code")
 		return
 	}
 

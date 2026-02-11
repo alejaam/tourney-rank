@@ -234,6 +234,8 @@ func (r *Router) setupRoutes() {
 		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tier/{tier}", r.withMiddleware(r.leaderboardHandler.GetLeaderboardByTier))
 		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/player/{playerId}", r.withMiddleware(r.leaderboardHandler.GetPlayerRank))
 		r.mux.HandleFunc("GET /api/v1/leaderboard/{gameId}/tiers", r.withMiddleware(r.leaderboardHandler.GetTierDistribution))
+		// Tournament-specific leaderboard
+		r.mux.HandleFunc("GET /api/v1/tournaments/{tournamentId}/leaderboard", r.withMiddleware(r.leaderboardHandler.GetTournamentLeaderboard))
 	}
 
 	// Player API routes (protected by auth middleware only)
@@ -299,6 +301,7 @@ func (r *Router) setupTournamentRoutes() {
 		r.mux.Handle("POST /api/v1/tournaments", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.CreateTournament))))
 		r.mux.Handle("PATCH /api/v1/tournaments/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.UpdateTournament))))
 		r.mux.Handle("PATCH /api/v1/tournaments/{id}/status", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.UpdateTournamentStatus))))
+		r.mux.Handle("PATCH /api/v1/tournaments/{id}/lobby-code", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.SetTournamentLobbyCode))))
 		r.mux.Handle("DELETE /api/v1/tournaments/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.DeleteTournament))))
 		r.mux.Handle("GET /api/v1/players/me/active-tournament", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.tournamentHandler.GetPlayerActiveTournament))))
 	}
@@ -331,7 +334,9 @@ func (r *Router) setupTeamRoutes() {
 	if r.jwtSecret != "" {
 		authMw := r.createAuthMiddleware()
 		r.mux.Handle("POST /api/v1/teams", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.CreateTeam))))
+		r.mux.Handle("POST /api/v1/tournaments/{tournamentId}/teams", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.CreateTeamForTournament))))
 		r.mux.Handle("POST /api/v1/teams/join", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.JoinTeam))))
+		r.mux.Handle("POST /api/v1/tournaments/{tournamentId}/teams/join", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.JoinTeamForTournament))))
 		r.mux.Handle("PATCH /api/v1/teams/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.UpdateTeam))))
 		r.mux.Handle("DELETE /api/v1/teams/{id}", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.DisbandTeam))))
 		r.mux.Handle("DELETE /api/v1/teams/{id}/members", r.withMiddlewareHandler(authMw(http.HandlerFunc(r.teamHandler.RemoveMember))))

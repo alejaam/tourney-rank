@@ -6,6 +6,7 @@ import (
 
 	"github.com/alejaam/tourney-rank/internal/domain/game"
 	"github.com/alejaam/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/domain/tournament"
 	"github.com/google/uuid"
 )
 
@@ -36,15 +37,17 @@ type TierDistribution map[string]int64
 
 // Service provides leaderboard operations.
 type Service struct {
-	statsRepo player.StatsRepository
-	gameRepo  game.Repository
+	statsRepo      player.StatsRepository
+	gameRepo       game.Repository
+	tournamentRepo tournament.Repository
 }
 
 // NewService creates a new leaderboard service.
-func NewService(statsRepo player.StatsRepository, gameRepo game.Repository) *Service {
+func NewService(statsRepo player.StatsRepository, gameRepo game.Repository, tournamentRepo tournament.Repository) *Service {
 	return &Service{
-		statsRepo: statsRepo,
-		gameRepo:  gameRepo,
+		statsRepo:      statsRepo,
+		gameRepo:       gameRepo,
+		tournamentRepo: tournamentRepo,
 	}
 }
 
@@ -173,6 +176,45 @@ func (s *Service) GetTierDistribution(ctx context.Context, gameID uuid.UUID) (Ti
 	}
 
 	return response, total, nil
+}
+
+// TournamentLeaderboardEntry represents a team's ranking in a tournament.
+type TournamentLeaderboardEntry struct {
+	Rank             int       `json:"rank"`
+	TeamID           uuid.UUID `json:"team_id"`
+	TeamName         string    `json:"team_name"`
+	CaptainID        uuid.UUID `json:"captain_id"`
+	CaptainName      string    `json:"captain_name"`
+	TotalScore       float64   `json:"total_score"`
+	MatchesPlayed    int       `json:"matches_played"`
+	MatchesWon       int       `json:"matches_won"`
+	TotalKills       int       `json:"total_kills"`
+	AverageKills     float64   `json:"average_kills"`
+	BestPlacement    int       `json:"best_placement"`
+	WorstPlacement   int       `json:"worst_placement"`
+	AveragePlacement float64   `json:"average_placement"`
+}
+
+// GetTournamentLeaderboard retrieves the cumulative leaderboard for an entire tournament.
+// For now, this returns a placeholder since match-to-tournament linkage isn't fully implemented.
+// In production, this should aggregate verified matches scoped to the tournament.
+func (s *Service) GetTournamentLeaderboard(ctx context.Context, tournamentID uuid.UUID, limit, offset int) ([]TournamentLeaderboardEntry, int64, error) {
+	// Verify tournament exists
+	tourn, err := s.tournamentRepo.GetByID(ctx, tournamentID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("tournament not found: %w", err)
+	}
+
+	if tourn == nil {
+		return nil, 0, fmt.Errorf("tournament not found")
+	}
+
+	// TODO: Implement proper tournament leaderboard aggregation
+	// This requires matches to have a tournament_id field and be associated with rounds
+	// For now, return empty leaderboard to avoid compile errors
+	entries := make([]TournamentLeaderboardEntry, 0)
+
+	return entries, 0, nil
 }
 
 // isValidTier checks if a tier str represents a valid Tier.

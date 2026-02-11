@@ -5,17 +5,32 @@ import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, Car
 import { useRegister } from '../features/auth/hooks';
 import type { ApiError } from '../types/api';
 
+const REGIONS = ['NA', 'EU', 'LATAM', 'ASIA', 'OCE', 'OTHER'];
+
 export const RegisterPage = () => {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [age, setAge] = useState('');
+    const [region, setRegion] = useState('');
     const [validationError, setValidationError] = useState('');
     const register = useRegister();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationError('');
+
+        if (!age || !region) {
+            setValidationError('Age and region are required');
+            return;
+        }
+
+        const ageNum = parseInt(age, 10);
+        if (ageNum < 13) {
+            setValidationError('You must be at least 13 years old');
+            return;
+        }
 
         if (password !== confirmPassword) {
             setValidationError('Passwords do not match');
@@ -27,7 +42,7 @@ export const RegisterPage = () => {
             return;
         }
 
-        register.mutate({ username, email, password });
+        register.mutate({ username, email, password, age: ageNum, region });
     };
 
     const errorMessage = register.error instanceof AxiosError
@@ -89,6 +104,35 @@ export const RegisterPage = () => {
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                             required
                         />
+
+                        <Input
+                            label="Age"
+                            type="number"
+                            name="age"
+                            placeholder="You must be 13 or older"
+                            value={age}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAge(e.target.value)}
+                            min="13"
+                            max="120"
+                            required
+                        />
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Region</label>
+                            <select
+                                value={region}
+                                onChange={(e) => setRegion(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
+                                required
+                            >
+                                <option value="">Select your region</option>
+                                {REGIONS.map((r) => (
+                                    <option key={r} value={r}>
+                                        {r}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-4">

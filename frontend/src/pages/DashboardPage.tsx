@@ -38,6 +38,9 @@ export const DashboardPage = () => {
                                 <Link to="/admin">
                                     <Button variant="secondary">Admin Panel</Button>
                                 </Link>
+                                <Link to="/tournaments">
+                                    <Button variant="secondary">Create Tournament</Button>
+                                </Link>
                                 <Link to="/tournament-admin">
                                     <Button variant="secondary">Manage Tournaments</Button>
                                 </Link>

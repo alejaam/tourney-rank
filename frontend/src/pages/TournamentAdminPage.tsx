@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { BracketGenerator, BracketView } from "../components/bracket";
 import { Button } from "../components/ui/Button";
 import { tournamentApi } from "../services/tournaments";
 import type { Tournament } from "../types/api";
 
 export function TournamentAdminPage() {
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
@@ -71,7 +72,10 @@ export function TournamentAdminPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">Tournament Administration</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-3xl font-bold">Tournament Administration</h1>
+                <Button variant="primary" onClick={() => navigate("/tournaments")}>Create Tournament</Button>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Tournament List Sidebar */}
@@ -115,9 +119,12 @@ export function TournamentAdminPage() {
                 <div className="lg:col-span-3">
                     {!selectedTournament ? (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 mb-4">
                                 Select a tournament from the list to manage it
                             </p>
+                            <Button variant="primary" onClick={() => navigate("/tournaments")}>
+                                Create Tournament
+                            </Button>
                         </div>
                     ) : (
                         <div className="space-y-6">
