@@ -239,6 +239,33 @@ func (h *TournamentHandler) DeleteTournament(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Get user info from context
+	userInfo, ok := middleware.GetUserInfo(r.Context())
+	if !ok {
+		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Get tournament to validate ownership
+	tournament, err := h.service.GetTournament(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, tournamentdomain.ErrNotFound) {
+			h.errorResponse(w, http.StatusNotFound, "Tournament not found")
+			return
+		}
+		h.logger.Error("Failed to get tournament", "error", err)
+		h.errorResponse(w, http.StatusInternalServerError, "Failed to retrieve tournament")
+		return
+	}
+
+	// Check permissions: only creator or admin can delete
+	userID, _ := uuid.Parse(userInfo.ID)
+	isAdmin := userInfo.Role == "admin"
+	if tournament.CreatedBy != userID && !isAdmin {
+		h.errorResponse(w, http.StatusForbidden, "You do not have permission to delete this tournament")
+		return
+	}
+
 	if err := h.service.DeleteTournament(r.Context(), id); err != nil {
 		if errors.Is(err, tournamentdomain.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "Tournament not found")

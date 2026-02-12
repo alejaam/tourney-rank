@@ -208,6 +208,7 @@ export interface Tournament {
   created_by: string;
   created_at: string;
   updated_at: string;
+  lobby_code?: string;
 }
 
 export interface CreateTournamentRequest {

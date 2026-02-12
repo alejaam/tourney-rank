@@ -6,4 +6,5 @@ export { MatchReportPage } from "./MatchReportPage";
 export { PlayerProfilePage } from "./PlayerProfilePage";
 export { RegisterPage } from "./RegisterPage";
 export { TournamentAdminPage } from "./TournamentAdminPage";
+export { TournamentDetailPage } from "./TournamentDetailPage";
 export { TournamentsPage } from "./TournamentsPage";

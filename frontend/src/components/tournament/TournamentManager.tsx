@@ -25,8 +25,8 @@ export function TournamentManager() {
                         setSelectedTournament(null);
                     }}
                     className={`px-4 py-2 font-medium transition ${view === "list"
-                            ? "text-blue-600 border-b-2 border-blue-600"
-                            : "text-gray-600 hover:text-gray-900"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-600 hover:text-gray-900"
                         }`}
                 >
                     All Tournaments
@@ -37,8 +37,8 @@ export function TournamentManager() {
                         setSelectedTournament(null);
                     }}
                     className={`px-4 py-2 font-medium transition ${view === "create"
-                            ? "text-blue-600 border-b-2 border-blue-600"
-                            : "text-gray-600 hover:text-gray-900"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-600 hover:text-gray-900"
                         }`}
                 >
                     Create Tournament
@@ -59,6 +59,7 @@ export function TournamentManager() {
                 <TournamentList
                     onTournamentSelect={handleTournamentSelect}
                     onTournamentDelete={() => setSelectedTournament(null)}
+                    isAdmin={true}
                 />
             )}
         </div>

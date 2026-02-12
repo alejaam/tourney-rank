@@ -7,11 +7,13 @@ import { Button } from "../ui/Button";
 interface TournamentListProps {
     onTournamentSelect?: (tournament: Tournament) => void;
     onTournamentDelete?: (id: string) => void;
+    isAdmin?: boolean;
 }
 
 export function TournamentList({
     onTournamentSelect,
     onTournamentDelete,
+    isAdmin = false,
 }: TournamentListProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -131,16 +133,18 @@ export function TournamentList({
                                     >
                                         {tournament.status}
                                     </span>
-                                    <Button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(tournament.id);
-                                        }}
-                                        variant="danger"
-                                        size="sm"
-                                    >
-                                        Delete
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(tournament.id);
+                                            }}
+                                            variant="danger"
+                                            size="sm"
+                                        >
+                                            Delete
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
