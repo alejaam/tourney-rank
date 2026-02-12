@@ -48,6 +48,14 @@ export const tournamentApi = {
   },
 
   /**
+   * Get player's active tournament (joined via team)
+   */
+  getPlayerActiveTournament: async (): Promise<Tournament> => {
+    const response = await api.get<Tournament>("/players/me/active-tournament");
+    return response.data;
+  },
+
+  /**
    * Update a tournament
    */
   updateTournament: async (

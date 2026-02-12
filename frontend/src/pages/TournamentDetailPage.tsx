@@ -22,7 +22,7 @@ export function TournamentDetailPage() {
     const [inviteCode, setInviteCode] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
-    const { data: tournament, isLoading, error } = useQuery({
+    const { data: tournament, isLoading, error, refetch } = useQuery({
         queryKey: ["tournament", id],
         queryFn: async () => {
             if (!id) throw new Error("Tournament ID is required");
@@ -30,6 +30,10 @@ export function TournamentDetailPage() {
         },
         enabled: !!id,
     });
+
+    // Determine if user can admin this tournament (creator or global admin)
+    const isCreator = user?.id && tournament?.created_by === user.id;
+    const canManageTournament = isAdmin || isCreator;
 
     const handleNavigateBack = () => {
         navigate("/tournaments");
@@ -51,7 +55,8 @@ export function TournamentDetailPage() {
 
             await tournamentApi.updateTournamentStatus(tournament.id, newStatus);
             toast.success(`Tournament ${newStatus}`);
-            window.location.reload();
+            // Refetch the tournament data instead of full page reload
+            await refetch();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to update tournament");
         }
@@ -92,13 +97,16 @@ export function TournamentDetailPage() {
 
         setSubmitting(true);
         try {
-            await teamApi.joinTeam({ invite_code: inviteCode.trim() });
-            toast.success(`Successfully joined team!`);
+            const result = await teamApi.joinTeam({ invite_code: inviteCode.trim() });
+            toast.success(`Successfully joined ${result.name}!`);
             setJoinMethod(null);
             setInviteCode("");
+            // Refresh after success
+            setTimeout(() => window.location.reload(), 1500);
         } catch (error: any) {
             console.error("Failed to join team:", error);
-            toast.error(error?.response?.data?.error || "Failed to join team");
+            const errorMsg = error?.response?.data?.error || error?.message || "Failed to join team";
+            toast.error(errorMsg);
         } finally {
             setSubmitting(false);
         }
@@ -197,9 +205,9 @@ export function TournamentDetailPage() {
                 </div>
 
                 {/* Admin Controls */}
-                {isAdmin && (
+                {canManageTournament && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-sm font-semibold text-gray-600 mb-3">Admin Controls</p>
+                        <p className="text-sm font-semibold text-gray-600 mb-3">Tournament Management</p>
                         <div className="flex gap-2 flex-wrap">
                             {tournament.status === "draft" && (
                                 <Button
@@ -246,20 +254,21 @@ export function TournamentDetailPage() {
             {tournament.status !== "finished" && tournament.status !== "canceled" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Team Registration</h2>
+                    <p className="text-sm text-gray-600 mb-4">Tournament Status: <span className="font-semibold uppercase">{tournament.status}</span></p>
 
                     {joinMethod === null && (
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 flex-wrap">
                             <Button
                                 onClick={() => setJoinMethod("create")}
                                 variant="primary"
                             >
-                                Create Team
+                                ✨ Create Team
                             </Button>
                             <Button
                                 onClick={() => setJoinMethod("join")}
                                 variant="secondary"
                             >
-                                Join with Code
+                                📋 Join with Code
                             </Button>
                         </div>
                     )}
@@ -315,17 +324,21 @@ export function TournamentDetailPage() {
                                 <label className="block text-sm font-medium text-gray-900 mb-2">
                                     Invite Code
                                 </label>
+                                <p className="text-sm text-gray-600 mb-3">
+                                    Ask your team captain for the invite code (8 character code)
+                                </p>
                                 <Input
-                                    placeholder="Enter team invite code"
+                                    placeholder="e.g., a1b2c3d4"
                                     value={inviteCode}
-                                    onChange={(e) => setInviteCode(e.target.value)}
+                                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                                    maxLength={8}
                                 />
                             </div>
                             <div className="flex gap-2">
                                 <Button
                                     onClick={handleJoinTeam}
                                     variant="primary"
-                                    disabled={submitting}
+                                    disabled={submitting || !inviteCode.trim()}
                                 >
                                     {submitting ? "Joining..." : "Join Team"}
                                 </Button>

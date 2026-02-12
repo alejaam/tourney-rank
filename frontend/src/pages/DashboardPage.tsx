@@ -6,6 +6,7 @@ import { JoinTournamentModal } from '../components/tournament';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { useLogout } from '../features/auth/hooks';
 import { playerApi } from '../services/player';
+import { tournamentApi } from '../services/tournaments';
 import type { AuthState } from '../store/authStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -18,6 +19,13 @@ export const DashboardPage = () => {
     const { data: player, isLoading, error } = useQuery({
         queryKey: ['player', 'me'],
         queryFn: playerApi.getMyProfile,
+        enabled: !!user,
+    });
+
+    // Fetch player's active tournament
+    const { data: activeTournament } = useQuery({
+        queryKey: ['player', 'active-tournament'],
+        queryFn: tournamentApi.getPlayerActiveTournament,
         enabled: !!user,
     });
 
@@ -136,8 +144,15 @@ export const DashboardPage = () => {
                             <CardTitle className="text-lg">Tournaments</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-4xl font-bold text-green-500">0</p>
+                            <p className="text-4xl font-bold text-green-500">
+                                {activeTournament ? 1 : 0}
+                            </p>
                             <p className="text-gray-400 text-sm">Active tournaments</p>
+                            {activeTournament && (
+                                <p className="text-sm text-green-400 mt-2 truncate">
+                                    {activeTournament.name}
+                                </p>
+                            )}
                         </CardContent>
                     </Card>
 

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { MainLayout } from './layouts/MainLayout';
-import { AdminPage, DashboardPage, HomePage, LoginPage, MatchReportPage, PlayerProfilePage, RegisterPage, TournamentAdminPage, TournamentsPage } from './pages';
+import { AdminPage, DashboardPage, HomePage, LoginPage, MatchReportPage, PlayerProfilePage, RegisterPage, TournamentAdminPage, TournamentDetailPage, TournamentsPage } from './pages';
 
 const queryClient = new QueryClient({
   defaultOptions: {

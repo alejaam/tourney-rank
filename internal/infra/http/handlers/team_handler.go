@@ -206,6 +206,8 @@ func (h *TeamHandler) JoinTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.logger.Debug("Join team request received", "invite_code", req.InviteCode[:4]+"***")
+
 	playerID, err := h.getAuthenticatedPlayerID(r.Context())
 	if err != nil {
 		if err.Error() == "unauthorized" {
@@ -216,23 +218,43 @@ func (h *TeamHandler) JoinTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.logger.Debug("Player authenticated", "player_id", playerID)
+
 	team, err := h.service.JoinTeam(r.Context(), req, playerID)
 	if err != nil {
-		h.logger.Error("Failed to join team", "error", err, "player_id", playerID)
+		h.logger.Error("Failed to join team",
+			"error", err,
+			"player_id", playerID,
+			"invite_code", req.InviteCode[:4]+"***",
+		)
 		status := http.StatusInternalServerError
 		message := "Failed to join team"
 
 		if errors.Is(err, teamdomain.ErrInvalidInviteCode) || errors.Is(err, teamdomain.ErrNotFound) {
 			status = http.StatusNotFound
 			message = "Invalid invite code"
+			h.logger.Warn("Invalid invite code or team not found",
+				"player_id", playerID,
+				"error_type", "invalid_code_or_not_found",
+			)
 		} else if errors.Is(err, teamdomain.ErrPlayerAlreadyInTeam) || errors.Is(err, teamdomain.ErrTeamFull) {
 			status = http.StatusConflict
 			message = err.Error()
+			h.logger.Warn("Team join conflict",
+				"player_id", playerID,
+				"error_type", err.Error(),
+			)
 		}
 
 		h.errorResponse(w, status, message)
 		return
 	}
+
+	h.logger.Info("Player successfully joined team",
+		"player_id", playerID,
+		"team_id", team.ID,
+		"tournament_id", team.TournamentID,
+	)
 
 	h.jsonResponse(w, http.StatusOK, team)
 }
@@ -258,8 +280,34 @@ func (h *TeamHandler) JoinTeamForTournament(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.logger.Debug("Join team for tournament request received",
+		"tournament_id", tournamentID,
+		"invite_code", req.InviteCode[:4]+"***",
+	)
+
 	teamByCode, err := h.service.GetTeamByInviteCode(r.Context(), req.InviteCode)
-	if err != nil || teamByCode == nil || teamByCode.TournamentID != tID {
+	if err != nil {
+		h.logger.Warn("Team not found by invite code",
+			"tournament_id", tournamentID,
+			"error", err,
+		)
+		h.errorResponse(w, http.StatusNotFound, "Invalid invite code")
+		return
+	}
+
+	if teamByCode == nil {
+		h.logger.Warn("Team is nil for invite code",
+			"tournament_id", tournamentID,
+		)
+		h.errorResponse(w, http.StatusNotFound, "Invalid invite code")
+		return
+	}
+
+	if teamByCode.TournamentID != tID {
+		h.logger.Warn("Team tournament ID mismatch",
+			"requested_tournament_id", tournamentID,
+			"team_tournament_id", teamByCode.TournamentID.String(),
+		)
 		h.errorResponse(w, http.StatusNotFound, "Invalid invite code")
 		return
 	}
@@ -274,23 +322,44 @@ func (h *TeamHandler) JoinTeamForTournament(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.logger.Debug("Player authenticated", "player_id", playerID, "team_id", teamByCode.ID)
+
 	team, err := h.service.JoinTeam(r.Context(), req, playerID)
 	if err != nil {
-		h.logger.Error("Failed to join team", "error", err, "player_id", playerID)
+		h.logger.Error("Failed to join team for tournament",
+			"error", err,
+			"player_id", playerID,
+			"tournament_id", tournamentID,
+			"team_id", teamByCode.ID,
+		)
 		status := http.StatusInternalServerError
 		message := "Failed to join team"
 
 		if errors.Is(err, teamdomain.ErrInvalidInviteCode) || errors.Is(err, teamdomain.ErrNotFound) {
 			status = http.StatusNotFound
 			message = "Invalid invite code"
+			h.logger.Warn("Invalid invite code or team not found in join",
+				"player_id", playerID,
+				"error_type", "invalid_code_or_not_found",
+			)
 		} else if errors.Is(err, teamdomain.ErrPlayerAlreadyInTeam) || errors.Is(err, teamdomain.ErrTeamFull) {
 			status = http.StatusConflict
 			message = err.Error()
+			h.logger.Warn("Team join conflict",
+				"player_id", playerID,
+				"error_type", err.Error(),
+			)
 		}
 
 		h.errorResponse(w, status, message)
 		return
 	}
+
+	h.logger.Info("Player successfully joined team for tournament",
+		"player_id", playerID,
+		"team_id", team.ID,
+		"tournament_id", tournamentID,
+	)
 
 	h.jsonResponse(w, http.StatusOK, team)
 }

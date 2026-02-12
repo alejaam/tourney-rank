@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BracketGenerator, BracketView } from "../components/bracket";
 import { Button } from "../components/ui/Button";
+import { toast } from "../lib/toast";
+import { teamApi } from "../services/teams";
 import { tournamentApi } from "../services/tournaments";
 import { useAuthStore } from "../store/authStore";
-import type { Tournament } from "../types/api";
+import type { Team, Tournament } from "../types/api";
 
 export function TournamentAdminPage() {
     const navigate = useNavigate();
@@ -12,6 +14,8 @@ export function TournamentAdminPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [teamsLoading, setTeamsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"overview" | "teams" | "bracket" | "matches">(
         "overview"
     );
@@ -30,6 +34,25 @@ export function TournamentAdminPage() {
             }
         }
     }, [searchParams, tournaments]);
+
+    useEffect(() => {
+        if (selectedTournament) {
+            loadTeamsForTournament(selectedTournament.id);
+        }
+    }, [selectedTournament]);
+
+    const loadTeamsForTournament = async (tournamentId: string) => {
+        setTeamsLoading(true);
+        try {
+            const teamsData = await teamApi.getTournamentTeams(tournamentId);
+            setTeams(teamsData || []);
+        } catch (err) {
+            console.error("Failed to load teams:", err);
+            setTeams([]);
+        } finally {
+            setTeamsLoading(false);
+        }
+    };
 
     const loadTournaments = async () => {
         try {
@@ -51,8 +74,20 @@ export function TournamentAdminPage() {
     const handleStatusChange = async (newStatus: Tournament["status"]) => {
         if (!selectedTournament) return;
 
+        // Validation for starting tournament
+        if (newStatus === "active") {
+            if (teams.length < 2) {
+                toast.error(`Need at least 2 teams to start tournament (currently ${teams.length})`);
+                return;
+            }
+            if (!confirm(`Start tournament with ${teams.length} teams?`)) {
+                return;
+            }
+        }
+
         try {
             await tournamentApi.updateTournamentStatus(selectedTournament.id, newStatus);
+            toast.success(`Tournament ${newStatus}`);
             // Reload tournaments to get updated data
             loadTournaments();
             // Update selected tournament
@@ -60,7 +95,7 @@ export function TournamentAdminPage() {
             setSelectedTournament(updated);
         } catch (err: any) {
             console.error("Failed to update status:", err);
-            alert("Failed to update status: " + (err?.response?.data?.error || err?.message));
+            toast.error("Failed to update status: " + (err?.response?.data?.error || err?.message));
         }
     };
 
@@ -267,8 +302,38 @@ export function TournamentAdminPage() {
 
                                     {activeTab === "teams" && (
                                         <div>
-                                            <h3 className="text-lg font-bold mb-4">Registered Teams</h3>
-                                            <p className="text-gray-600">Team management coming soon...</p>
+                                            <h3 className="text-lg font-bold mb-4">Registered Teams ({teams.length})</h3>
+                                            {teamsLoading ? (
+                                                <p className="text-gray-600">Loading teams...</p>
+                                            ) : teams.length === 0 ? (
+                                                <p className="text-gray-600">No teams registered yet</p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {teams.map((t) => (
+                                                        <div key={t.id} className="border border-gray-200 rounded-lg p-4">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <h4 className="font-semibold text-lg">{t.name}</h4>
+                                                                    {t.tag && <p className="text-sm text-gray-600">Tag: {t.tag}</p>}
+                                                                    <p className="text-sm text-gray-600">Captain: {t.captain_name || 'Unknown'}</p>
+                                                                    <p className="text-sm text-gray-600">Members: {t.member_ids?.length || 1}</p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${t.status === "ready" ? "bg-green-100 text-green-800" :
+                                                                            t.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                                                                                "bg-gray-100 text-gray-800"
+                                                                        }`}>
+                                                                        {t.status}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-3 pt-3 border-t border-gray-200">
+                                                                <p className="text-xs text-gray-500">Invite Code: <code className="bg-gray-100 px-2 py-1 rounded">{t.invite_code}</code></p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
