@@ -169,6 +169,33 @@ func (h *TournamentHandler) UpdateTournamentStatus(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Get user info from context
+	userInfo, ok := middleware.GetUserInfo(r.Context())
+	if !ok {
+		h.errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Get tournament to validate permissions
+	tournament, err := h.service.GetTournament(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, tournamentdomain.ErrNotFound) {
+			h.errorResponse(w, http.StatusNotFound, "Tournament not found")
+			return
+		}
+		h.logger.Error("Failed to get tournament", "error", err)
+		h.errorResponse(w, http.StatusInternalServerError, "Failed to retrieve tournament")
+		return
+	}
+
+	// Check permissions: only creator or admin can update status
+	userID, _ := uuid.Parse(userInfo.ID)
+	isAdmin := userInfo.Role == "admin"
+	if tournament.CreatedBy != userID && !isAdmin {
+		h.errorResponse(w, http.StatusForbidden, "You do not have permission to update this tournament")
+		return
+	}
+
 	var req tournamentusecase.UpdateTournamentStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Failed to decode request", "error", err)
@@ -176,7 +203,7 @@ func (h *TournamentHandler) UpdateTournamentStatus(w http.ResponseWriter, r *htt
 		return
 	}
 
-	tournament, err := h.service.UpdateTournamentStatus(r.Context(), id, req)
+	updatedTournament, err := h.service.UpdateTournamentStatus(r.Context(), id, req)
 	if err != nil {
 		if errors.Is(err, tournamentdomain.ErrNotFound) {
 			h.errorResponse(w, http.StatusNotFound, "Tournament not found")
@@ -191,7 +218,7 @@ func (h *TournamentHandler) UpdateTournamentStatus(w http.ResponseWriter, r *htt
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, tournament)
+	h.jsonResponse(w, http.StatusOK, updatedTournament)
 }
 
 // SetTournamentLobbyCode handles PATCH /api/v1/tournaments/{id}/lobby-code

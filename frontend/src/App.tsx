@@ -40,8 +40,9 @@ function AppRoutes() {
           <Route path="/profile" element={<PlayerProfilePage />} />
           <Route path="/match-report" element={<MatchReportPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
-          <Route path="/tournaments/:id" element={<TournamentAdminPage />} />
+          <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
           <Route path="/tournament-admin" element={<TournamentAdminPage />} />
+          <Route path="/tournament-admin/:id" element={<TournamentAdminPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
       </Route>

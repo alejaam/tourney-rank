@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { BracketGenerator, BracketView } from "../components/bracket";
 import { Button } from "../components/ui/Button";
 import { tournamentApi } from "../services/tournaments";
+import { useAuthStore } from "../store/authStore";
 import type { Tournament } from "../types/api";
 
 export function TournamentAdminPage() {
     const navigate = useNavigate();
+    const user = useAuthStore((state) => state.user);
     const [searchParams, setSearchParams] = useSearchParams();
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
@@ -66,6 +68,21 @@ export function TournamentAdminPage() {
         return (
             <div className="container mx-auto p-6">
                 <div className="text-center py-12">Loading tournaments...</div>
+            </div>
+        );
+    }
+
+    // Only admins can access tournament admin page
+    if (user?.role !== "admin") {
+        return (
+            <div className="container mx-auto p-6">
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <p className="font-bold">Access Denied</p>
+                    <p>Only administrators can access the tournament administration panel.</p>
+                </div>
+                <Button onClick={() => navigate("/tournaments")}>
+                    Back to Tournaments
+                </Button>
             </div>
         );
     }
@@ -164,22 +181,13 @@ export function TournamentAdminPage() {
                                             </Button>
                                         )}
                                         {selectedTournament.status === "open" && (
-                                            <>
-                                                <Button
-                                                    variant="primary"
-                                                    size="sm"
-                                                    onClick={() => handleStatusChange("active")}
-                                                >
-                                                    Start Tournament
-                                                </Button>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => handleStatusChange("draft")}
-                                                >
-                                                    Close Registration
-                                                </Button>
-                                            </>
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => handleStatusChange("active")}
+                                            >
+                                                Start Tournament
+                                            </Button>
                                         )}
                                         {selectedTournament.status === "active" && (
                                             <Button
