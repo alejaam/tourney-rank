@@ -209,6 +209,7 @@ export interface Tournament {
   created_at: string;
   updated_at: string;
   lobby_code?: string;
+  current_teams?: number;
 }
 
 export interface CreateTournamentRequest {
@@ -233,6 +234,7 @@ export interface Team {
   member_ids: string[];
   invite_code: string;
   logo_url?: string;
+  status: "pending" | "ready" | "active" | "eliminated" | "disbanded";
   created_at: string;
   updated_at: string;
 }
@@ -288,6 +290,57 @@ export interface SubmitMatchRequest {
   team_kills: number;
   player_stats: PlayerMatchStats[];
   screenshot_url: string;
+}
+
+// Brackets
+export type BracketFormat =
+  | "single_elimination"
+  | "double_elimination"
+  | "round_robin"
+  | "swiss";
+
+export interface Bracket {
+  id: string;
+  tournament_id: string;
+  format: BracketFormat;
+  total_rounds: number;
+  current_round: number;
+  is_seeded: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Matchup {
+  id: string;
+  bracket_id: string;
+  round: number;
+  match_number: number;
+  team1_id?: string;
+  team2_id?: string;
+  winner_id?: string;
+  status: "pending" | "in_progress" | "completed" | "canceled";
+  scheduled_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchupResponse extends Matchup {
+  team1_name?: string;
+  team2_name?: string;
+}
+
+export interface BracketWithMatchups extends Bracket {
+  matchups: MatchupResponse[];
+}
+
+export interface GenerateBracketRequest {
+  tournament_id: string;
+  format: BracketFormat;
+  is_seeded: boolean;
+}
+
+export interface SetMatchupWinnerRequest {
+  winner_id: string;
 }
 
 // API Error

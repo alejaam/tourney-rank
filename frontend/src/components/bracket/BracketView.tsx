@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../../lib/error";
 import { bracketApi } from "../../services/brackets";
 import type { BracketWithMatchups, MatchupResponse } from "../../types/api";
 import { Button } from "../ui/Button";
@@ -15,27 +16,23 @@ export function BracketView({ tournamentId, isAdmin = false }: BracketViewProps)
     const [selectedMatchup, setSelectedMatchup] = useState<MatchupResponse | null>(null);
     const [winnerSelection, setWinnerSelection] = useState<string>("");
 
-    useEffect(() => {
-        loadBracket();
-    }, [tournamentId]);
-
-    const loadBracket = async () => {
+    const loadBracket = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
             const data = await bracketApi.getTournamentBracket(tournamentId);
             setBracket(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to load bracket:", err);
-            setError(
-                err?.response?.data?.error ||
-                err?.message ||
-                "Bracket not found for this tournament"
-            );
+            setError(errorMessage(err, "Bracket not found for this tournament"));
         } finally {
             setLoading(false);
         }
-    };
+    }, [tournamentId]);
+
+    useEffect(() => {
+        loadBracket();
+    }, [loadBracket]);
 
     const handleSetWinner = async () => {
         if (!selectedMatchup || !winnerSelection) return;
@@ -47,9 +44,9 @@ export function BracketView({ tournamentId, isAdmin = false }: BracketViewProps)
             setSelectedMatchup(null);
             setWinnerSelection("");
             loadBracket();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to set winner:", err);
-            alert("Failed to set winner: " + (err?.response?.data?.error || err?.message));
+            alert("Failed to set winner: " + errorMessage(err, "Unknown error"));
         }
     };
 

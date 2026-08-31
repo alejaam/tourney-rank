@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { gamesApi } from "../../services/games";
+import { errorMessage } from "../../lib/error";
 import { tournamentApi } from "../../services/tournaments";
 import type { CreateTournamentRequest, Tournament } from "../../types/api";
 import { Button } from "../ui/Button";
@@ -111,9 +112,8 @@ export function TournamentForm({ onSuccess, initialData }: TournamentFormProps) 
                 tournament = await tournamentApi.createTournament(createReq);
             }
             onSuccess?.(tournament);
-        } catch (err: any) {
-            const errorMsg = err?.response?.data?.error || err?.message || "Failed to save tournament";
-            setError(errorMsg);
+        } catch (err: unknown) {
+            setError(errorMessage(err, "Failed to save tournament"));
         } finally {
             setLoading(false);
         }

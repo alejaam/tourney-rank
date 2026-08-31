@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { errorMessage } from "../lib/error";
 import { toast } from "../lib/toast";
 import { teamApi, type CreateTeamRequest } from "../services/teams";
 import { tournamentApi } from "../services/tournaments";
@@ -81,9 +82,9 @@ export function TournamentDetailPage() {
             setJoinMethod(null);
             setTeamName("");
             setTeamTag("");
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to create team:", error);
-            toast.error(error?.response?.data?.error || "Failed to create team");
+            toast.error(errorMessage(error, "Failed to create team"));
         } finally {
             setSubmitting(false);
         }
@@ -103,10 +104,9 @@ export function TournamentDetailPage() {
             setInviteCode("");
             // Refresh after success
             setTimeout(() => window.location.reload(), 1500);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to join team:", error);
-            const errorMsg = error?.response?.data?.error || error?.message || "Failed to join team";
-            toast.error(errorMsg);
+            toast.error(errorMessage(error, "Failed to join team"));
         } finally {
             setSubmitting(false);
         }

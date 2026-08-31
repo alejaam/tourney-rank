@@ -58,7 +58,7 @@ export const teamApi = {
         `/tournaments/${tournamentId}/my-team`,
       );
       return response.data;
-    } catch (error) {
+    } catch {
       return null;
     }
   },

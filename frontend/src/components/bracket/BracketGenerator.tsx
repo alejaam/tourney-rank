@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { errorMessage } from "../../lib/error";
 import type { BracketFormat, GenerateBracketRequest } from "../../types/api";
 import { Button } from "../ui/Button";
 
@@ -27,11 +28,9 @@ export function BracketGenerator({ tournamentId, onSuccess }: BracketGeneratorPr
             const { bracketApi } = await import("../../services/brackets");
             await bracketApi.generateBracket(request);
             onSuccess?.();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to generate bracket:", err);
-            const errorMsg =
-                err?.response?.data?.error || err?.message || "Failed to generate bracket";
-            setError(errorMsg);
+            setError(errorMessage(err, "Failed to generate bracket"));
         } finally {
             setLoading(false);
         }

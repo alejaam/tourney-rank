@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BracketGenerator, BracketView } from "../components/bracket";
 import { Button } from "../components/ui/Button";
+import { errorMessage } from "../lib/error";
 import { toast } from "../lib/toast";
 import { teamApi } from "../services/teams";
 import { tournamentApi } from "../services/tournaments";
@@ -93,9 +94,9 @@ export function TournamentAdminPage() {
             // Update selected tournament
             const updated = await tournamentApi.getTournament(selectedTournament.id);
             setSelectedTournament(updated);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to update status:", err);
-            toast.error("Failed to update status: " + (err?.response?.data?.error || err?.message));
+            toast.error("Failed to update status: " + errorMessage(err, "Unknown error"));
         }
     };
 
@@ -315,7 +316,7 @@ export function TournamentAdminPage() {
                                                                 <div>
                                                                     <h4 className="font-semibold text-lg">{t.name}</h4>
                                                                     {t.tag && <p className="text-sm text-gray-600">Tag: {t.tag}</p>}
-                                                                    <p className="text-sm text-gray-600">Captain: {t.captain_name || 'Unknown'}</p>
+
                                                                     <p className="text-sm text-gray-600">Members: {t.member_ids?.length || 1}</p>
                                                                 </div>
                                                                 <div className="text-right">

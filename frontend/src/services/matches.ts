@@ -16,7 +16,7 @@ export const matchApi = {
         "/players/me/active-tournament",
       );
       return response.data;
-    } catch (error) {
+    } catch {
       // No active tournament
       return null;
     }
@@ -33,7 +33,7 @@ export const matchApi = {
         `/tournaments/${tournamentId}/my-team`,
       );
       return response.data;
-    } catch (error) {
+    } catch {
       // Player not in tournament
       return null;
     }

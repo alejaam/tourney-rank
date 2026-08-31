@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { errorMessage } from "../../lib/error";
 import { toast } from "../../lib/toast";
 import { teamSizeToLabel } from "../../lib/utils";
-import { playerApi } from "../../services/player";
 import { teamApi, type CreateTeamRequest } from "../../services/teams";
 import { tournamentApi } from "../../services/tournaments";
 import { useAuthStore } from "../../store/authStore";
-import type { PlayerGameStatsDetail, Tournament } from "../../types/api";
+import type { Tournament } from "../../types/api";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 
@@ -22,7 +22,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
     const user = useAuthStore((state) => state.user);
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-    const [gameStats, setGameStats] = useState<PlayerGameStatsDetail | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [joinMethod, setJoinMethod] = useState<JoinMethod>(null);
@@ -40,23 +40,6 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        if (!selectedTournament) {
-            setGameStats(null);
-            return;
-        }
-
-        const loadStats = async () => {
-            try {
-                const stats = await playerApi.getMyGameStats(selectedTournament.game_id);
-                setGameStats(stats);
-            } catch (error) {
-                setGameStats(null);
-            }
-        };
-
-        loadStats();
-    }, [selectedTournament]);
 
     const loadData = async () => {
         setLoading(true);
@@ -75,9 +58,9 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
             }
 
             setTournaments(Array.from(merged.values()));
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to load tournaments:", error);
-            toast.error("Failed to load tournaments");
+            toast.error(errorMessage(error, "Failed to load tournaments"));
         } finally {
             setLoading(false);
         }
@@ -86,34 +69,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
     const checkEligibility = (tournament: Tournament): { eligible: boolean; reasons: string[] } => {
         const reasons: string[] = [];
 
-        const hasStats = Boolean(gameStats);
-
         const rules = tournament.rules;
-
-        // Check max K/D
-        if (hasStats && rules.max_kd !== undefined) {
-            const playerKD = Number(gameStats.stats.kd || 0);
-            if (playerKD > rules.max_kd) {
-                reasons.push(`K/D too high (${playerKD.toFixed(2)} > ${rules.max_kd})`);
-            }
-        }
-
-        // Check min K/D
-        if (hasStats && rules.min_kd !== undefined) {
-            const playerKD = Number(gameStats.stats.kd || 0);
-            if (playerKD < rules.min_kd) {
-                reasons.push(`K/D too low (${playerKD.toFixed(2)} < ${rules.min_kd})`);
-            }
-        }
-
-        // Check min matches played
-        if (hasStats && rules.min_matches_played !== undefined) {
-            if (gameStats.matches_played < rules.min_matches_played) {
-                reasons.push(
-                    `Not enough matches played (${gameStats.matches_played} < ${rules.min_matches_played})`
-                );
-            }
-        }
 
         if (tournament.status !== "open" && !tournament.rules.allow_late_registration) {
             reasons.push("Registration is closed");
@@ -157,9 +113,9 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
             // Navigate to tournament page or team management
             onClose();
             navigate(`/tournaments/${selectedTournament.id}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to create team:", error);
-            toast.error(error?.response?.data?.error || "Failed to create team");
+            toast.error(errorMessage(error, "Failed to create team"));
         } finally {
             setSubmitting(false);
         }
@@ -178,9 +134,9 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
 
             onClose();
             navigate(`/tournaments/${team.tournament_id}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to join team:", error);
-            toast.error(error?.response?.data?.error || "Failed to join team");
+            toast.error(errorMessage(error, "Failed to join team"));
         } finally {
             setSubmitting(false);
         }
@@ -248,34 +204,6 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
                                 Select a Tournament
                             </h3>
 
-                            {/* Player Stats Summary */}
-                            {gameStats && (
-                                <div className="bg-gray-700 rounded-lg p-4 mb-6">
-                                    <h4 className="text-sm font-medium text-gray-300 mb-2">
-                                        Your Game Stats
-                                    </h4>
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <span className="text-gray-400">K/D Ratio:</span>
-                                            <p className="text-white font-bold">
-                                                {Number(gameStats.stats.kd || 0).toFixed(2)}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400">Matches Played:</span>
-                                            <p className="text-white font-bold">
-                                                {gameStats.matches_played}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400">Ranking Score:</span>
-                                            <p className="text-white font-bold">
-                                                {gameStats.ranking_score.toFixed(0)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                             <div className="space-y-4">
                                 {tournaments.map((tournament) => {
@@ -329,34 +257,7 @@ export function JoinTournamentModal({ isOpen, onClose }: JoinTournamentModalProp
                                                         )}
                                                     </div>
 
-                                                    {/* Requirements */}
-                                                    {(tournament.rules.max_kd !== undefined ||
-                                                        tournament.rules.min_kd !== undefined ||
-                                                        tournament.rules.min_matches_played !==
-                                                        undefined) && (
-                                                            <div className="mt-3 text-xs text-gray-400">
-                                                                <span className="font-medium">
-                                                                    Requirements:
-                                                                </span>{" "}
-                                                                {tournament.rules.min_kd !== undefined && (
-                                                                    <span>
-                                                                        Min K/D: {tournament.rules.min_kd}
-                                                                    </span>
-                                                                )}
-                                                                {tournament.rules.max_kd !== undefined && (
-                                                                    <span className="ml-2">
-                                                                        Max K/D: {tournament.rules.max_kd}
-                                                                    </span>
-                                                                )}
-                                                                {tournament.rules.min_matches_played !==
-                                                                    undefined && (
-                                                                        <span className="ml-2">
-                                                                            Min Matches:{" "}
-                                                                            {tournament.rules.min_matches_played}
-                                                                        </span>
-                                                                    )}
-                                                            </div>
-                                                        )}
+
                                                 </div>
 
                                                 {eligibility.eligible ? (

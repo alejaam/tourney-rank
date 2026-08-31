@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { teamSizeToLabel } from "../../lib/utils";
 import { tournamentApi } from "../../services/tournaments";
 import type { Tournament } from "../../types/api";
@@ -20,11 +20,7 @@ export function TournamentList({
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [filter, setFilter] = useState<"all" | "draft" | "open" | "active" | "finished">("all");
 
-    useEffect(() => {
-        loadTournaments();
-    }, [filter]);
-
-    const loadTournaments = async () => {
+    const loadTournaments = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -36,7 +32,11 @@ export function TournamentList({
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter]);
+
+    useEffect(() => {
+        loadTournaments();
+    }, [loadTournaments]);
 
     const handleDelete = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this tournament?")) {
