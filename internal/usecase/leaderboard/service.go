@@ -3,9 +3,12 @@ package leaderboard
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/alejaam/tourney-rank/internal/domain/game"
+	"github.com/alejaam/tourney-rank/internal/domain/match"
 	"github.com/alejaam/tourney-rank/internal/domain/player"
+	"github.com/alejaam/tourney-rank/internal/domain/team"
 	"github.com/alejaam/tourney-rank/internal/domain/tournament"
 	"github.com/google/uuid"
 )
@@ -39,14 +42,20 @@ type TierDistribution map[string]int64
 type Service struct {
 	statsRepo      player.StatsRepository
 	gameRepo       game.Repository
+	matchRepo      match.Repository
+	teamRepo       team.Repository
+	playerRepo     player.Repository
 	tournamentRepo tournament.Repository
 }
 
 // NewService creates a new leaderboard service.
-func NewService(statsRepo player.StatsRepository, gameRepo game.Repository, tournamentRepo tournament.Repository) *Service {
+func NewService(statsRepo player.StatsRepository, gameRepo game.Repository, matchRepo match.Repository, teamRepo team.Repository, playerRepo player.Repository, tournamentRepo tournament.Repository) *Service {
 	return &Service{
 		statsRepo:      statsRepo,
 		gameRepo:       gameRepo,
+		matchRepo:      matchRepo,
+		teamRepo:       teamRepo,
+		playerRepo:     playerRepo,
 		tournamentRepo: tournamentRepo,
 	}
 }
@@ -195,9 +204,7 @@ type TournamentLeaderboardEntry struct {
 	AveragePlacement float64   `json:"average_placement"`
 }
 
-// GetTournamentLeaderboard retrieves the cumulative leaderboard for an entire tournament.
-// For now, this returns a placeholder since match-to-tournament linkage isn't fully implemented.
-// In production, this should aggregate verified matches scoped to the tournament.
+// GetTournamentLeaderboard retrieves the cumulative leaderboard from verified match reports.
 func (s *Service) GetTournamentLeaderboard(ctx context.Context, tournamentID uuid.UUID, limit, offset int) ([]TournamentLeaderboardEntry, int64, error) {
 	// Verify tournament exists
 	tourn, err := s.tournamentRepo.GetByID(ctx, tournamentID)
@@ -209,12 +216,110 @@ func (s *Service) GetTournamentLeaderboard(ctx context.Context, tournamentID uui
 		return nil, 0, fmt.Errorf("tournament not found")
 	}
 
-	// TODO: Implement proper tournament leaderboard aggregation
-	// This requires matches to have a tournament_id field and be associated with rounds
-	// For now, return empty leaderboard to avoid compile errors
-	entries := make([]TournamentLeaderboardEntry, 0)
+	teams, err := s.teamRepo.GetByTournamentID(ctx, tournamentID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get tournament teams: %w", err)
+	}
 
-	return entries, 0, nil
+	type standing struct {
+		entry        TournamentLeaderboardEntry
+		placements   int
+		placementSum int
+	}
+	standings := make(map[uuid.UUID]*standing, len(teams))
+	for _, tm := range teams {
+		captainName := ""
+		if captain, err := s.playerRepo.GetByID(ctx, tm.CaptainID.String()); err == nil && captain != nil {
+			captainName = captain.DisplayName
+		}
+		standings[tm.ID] = &standing{entry: TournamentLeaderboardEntry{
+			TeamID: tm.ID, TeamName: tm.Name, CaptainID: tm.CaptainID, CaptainName: captainName,
+		}}
+	}
+
+	// Fetch every match in batches because leaderboard ranking must not depend on the page size.
+	const batchSize = 100
+	for matchOffset := 0; ; matchOffset += batchSize {
+		matches, err := s.matchRepo.GetByTournament(ctx, tournamentID.String(), batchSize, matchOffset)
+		if err != nil {
+			return nil, 0, fmt.Errorf("get tournament matches: %w", err)
+		}
+		for _, m := range matches {
+			if m.Status != match.StatusVerified {
+				continue
+			}
+			standing, ok := standings[m.TeamID]
+			if !ok {
+				continue
+			}
+			standing.entry.MatchesPlayed++
+			standing.entry.TotalKills += m.TeamKills
+			standing.entry.TotalScore += tournamentMatchScore(tourn.ScoringSchema, m)
+			if m.TeamPlacement == 1 {
+				standing.entry.MatchesWon++
+			}
+			if standing.placements == 0 || m.TeamPlacement < standing.entry.BestPlacement {
+				standing.entry.BestPlacement = m.TeamPlacement
+			}
+			if m.TeamPlacement > standing.entry.WorstPlacement {
+				standing.entry.WorstPlacement = m.TeamPlacement
+			}
+			standing.placements++
+			standing.placementSum += m.TeamPlacement
+		}
+		if len(matches) < batchSize {
+			break
+		}
+	}
+
+	entries := make([]TournamentLeaderboardEntry, 0, len(standings))
+	for _, standing := range standings {
+		if standing.entry.MatchesPlayed > 0 {
+			standing.entry.AverageKills = float64(standing.entry.TotalKills) / float64(standing.entry.MatchesPlayed)
+			standing.entry.AveragePlacement = float64(standing.placementSum) / float64(standing.entry.MatchesPlayed)
+		}
+		entries = append(entries, standing.entry)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].TotalScore != entries[j].TotalScore {
+			return entries[i].TotalScore > entries[j].TotalScore
+		}
+		if entries[i].MatchesWon != entries[j].MatchesWon {
+			return entries[i].MatchesWon > entries[j].MatchesWon
+		}
+		return entries[i].TeamName < entries[j].TeamName
+	})
+	for i := range entries {
+		entries[i].Rank = i + 1
+	}
+
+	total := int64(len(entries))
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 1 {
+		limit = len(entries)
+	}
+	if offset >= len(entries) {
+		return []TournamentLeaderboardEntry{}, total, nil
+	}
+	end := offset + limit
+	if end > len(entries) {
+		end = len(entries)
+	}
+	return entries[offset:end], total, nil
+}
+
+func tournamentMatchScore(schema tournament.ScoringSchema, m match.Match) float64 {
+	placementWeight, hasPlacementWeight := schema.Weights["placement"]
+	killWeight, hasKillWeight := schema.Weights["kills"]
+	if !hasPlacementWeight {
+		placementWeight = 1
+	}
+	if !hasKillWeight {
+		killWeight = 1
+	}
+	return float64(101-m.TeamPlacement)*placementWeight + float64(m.TeamKills)*killWeight
 }
 
 // isValidTier checks if a tier str represents a valid Tier.

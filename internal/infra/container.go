@@ -225,7 +225,7 @@ func (c *Container) initServices() error {
 	c.PlayerService = playerusecase.NewService(c.PlayerRepo)
 
 	// Leaderboard service
-	c.LeaderboardService = leaderboardusecase.NewService(c.PlayerStatsRepo, c.GameRepo, c.TournamentRepo)
+	c.LeaderboardService = leaderboardusecase.NewService(c.PlayerStatsRepo, c.GameRepo, c.MatchRepo, c.TeamRepo, c.PlayerRepo, c.TournamentRepo)
 
 	// Tournament service
 	c.TournamentService = tournamentusecase.NewService(c.TournamentRepo, c.TeamRepo, c.GameRepo)

@@ -39,7 +39,4 @@ make test
 
 ## Documentation
 
-- [docs/QUICKSTART.md](docs/QUICKSTART.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
-- [docs/ROADMAP.md](docs/ROADMAP.md)
